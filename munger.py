@@ -191,7 +191,8 @@ class APHeadlines(HeavyScraper):
             print("Navigating to {}".format(topic.find_element_by_tag_name('a').get_attribute('href')))
             topic.find_element_by_tag_name('a').click()
             time.sleep(3)
-            print("{} is loaded; retrieving headlines ...".format(self.driver.current_url))
+            self.url = self.driver.current_url
+            print("{} is loaded; retrieving headlines ...".format(self.url))
             stories = self.driver.find_elements_by_class_name('FeedCard')
             for story in stories:
                 try:
@@ -254,6 +255,21 @@ if __name__ == "__main__":
                              "Expected 'Entertainment' but got '{}'".format(self.o.topic_list[1][1])
                             )
 
+        def test_scrape_ap_headlines_by_topic(self):
+            """ Test APHeadlines can retrieve headlines for a given topic  """
+            print("Fetching headlines for topic 'Entertainment'; please be EXTRA patient . . .")
+            self.o = APHeadlines(2)
+            time.sleep(3)
+            self.assertEqual(
+                             self.o.url,
+                             "https://apnews.com/apf-entertainment",
+                             """Expected 'https://apnews.com/apf-entertainment' but url
+                             is '{}'
+                             """.format(self.o.url)
+                            )
+            
+            self.assertTrue(len(self.o.headlines) > 0, "no data was fetched")
+    
 
     unittest.main()
 
