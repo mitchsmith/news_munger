@@ -135,7 +135,9 @@ class Trends(HeavyScraper):
     url = "https://trends.google.com/trends/trendingsearches/daily?geo=US"
 
     def __init__(self):
-        """ Fetches a list of trending google search terms and immediately close the marionette driver  """
+        """ Fetches a list of trending google search terms and immediately
+        closes the marionette driver 
+        """
         super().__init__(self.url)
         self.driver.get(self.url)
         self._trends = [
@@ -157,28 +159,101 @@ class Trends(HeavyScraper):
         return '<Trends object: url={}>'.format(self.url)
 
 
+class APHeadlines(HeavyScraper):
+    """ Scrape AP News Topics and optionally retrieve headlines by topic  """
+    url = "https://apnews.com/"
+    def __init__(self, topic_id=0):
+        """ Fetches the list of topics and immediatly closes the marionette
+        driver. If the topic_id arg is supplied, headlines filed under that
+        topic are also retrieved before closing the marionette driver.
+        """
+        super().__init__(self.url)
+        self.driver.get(self.url)
+        self.topic_list = []
+        self.headlines = []
+        self.ap_nav = self.driver.find_elements_by_class_name('nav-action')
+        print("Got AP Nav")
+        time.sleep(3)
+        self.ap_nav[1].click()
+        time.sleep(3)
+        self.topic_nav = self.driver.find_element_by_class_name('TopicsDropdown').find_elements_by_tag_name('li')
+        # create_topic_list
+        for index, li in enumerate(self.topic_nav):
+            if index > 0:
+                self.topic_list.append((index, li.text))
+
+        if topic_id > 0:
+            topic = self.topic_nav[topic_id]
+            time.sleep(3)
+            if not topic.find_element_by_tag_name('a').is_displayed():
+                self.ap_nav[1].click()
+                time.sleep(1)
+            print("Navigating to {}".format(topic.find_element_by_tag_name('a').get_attribute('href')))
+            topic.find_element_by_tag_name('a').click()
+            time.sleep(3)
+            print("{} is loaded; retrieving headlines ...".format(self.driver.current_url))
+            stories = self.driver.find_elements_by_class_name('FeedCard')
+            for story in stories:
+                try:
+                    loc = story.location_once_scrolled_into_view
+                    txt = story.text
+                    href = story.find_element_by_tag_name('a').get_attribute('href')
+                    self.headlines.append((self.driver.title, href, txt))
+                except:
+                    pass
+
+        self.driver.close()
+
+    def __repr__(self):
+        return '<APHeadlines object: url={}>'.format(self.url)
+
+   
+
 
 if __name__ == "__main__":
     import unittest
 
     class TestSeleniumScrapers(unittest.TestCase):
 
+        def tearDown(self):
+            try:
+                self.o.driver.close()
+            except:
+                pass
+
         def test_instantiate_heavy_scraper(self):
             """ Test instantiate HeavyScraper object. """
-            o = HeavyScraper()
-            self.assertEqual(repr(o), "<HeavyScraper object: url=None>", "incorrect object representation")
-            o.driver.close()
+            self.o = HeavyScraper()
+            self.assertEqual(repr(self.o), "<HeavyScraper object: url=None>", "incorrect object representation")
+            self.o.driver.close()
 
         def test_instantiate_trends_object(self):
-            print("Fetching data; please be patient . . .")
-            o = Trends()
+            """ Test instanttiate Trends object.  """
+            print("Fetching trends data; please be patient . . .")
+            self.o = Trends()
             self.assertEqual(
-                    repr(o),
+                    repr(self.o),
                     "<Trends object: url=https://trends.google.com/trends/trendingsearches/daily?geo=US>",
                     "incorrect object representation"
                     )
-            self.assertTrue(len(o.ngrams) > 0, "no data was fetched")
-        
+            self.assertTrue(len(self.o.ngrams) > 0, "no data was fetched")
+
+        def test_instantiate_apheadlines(self):
+            """ Test instantiate APHeadlines object  """
+            print("Fetching AP News topics data; please be patient . . .")
+            self.o = APHeadlines()
+            self.assertEqual(
+                    repr(self.o),
+                    "<APHeadlines object: url=https://apnews.com/>",
+                    "incorrect object representation"
+                    )
+            self.assertTrue(len(self.o.topic_list) > 0, "no data was fetched")
+            self.assertEqual(
+                             self.o.topic_list[1][1],
+                             "Entertainment",
+                             "Expected 'Entertainment' but got '{}'".format(self.o.topic_list[1][1])
+                            )
+
 
     unittest.main()
 
