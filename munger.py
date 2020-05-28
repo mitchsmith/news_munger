@@ -111,7 +111,38 @@ GENERIC_TITLES = (
     )
 
 
+class HeavyScraper:
+    """A resource intensive, selemium-based Soup-Nazi countermeasure
+    (Base class for scrapers that must use gekodriver instead of Beautiful Soup)
+    """
+    def __init__(self, url=None):
+        self.url = url
+        options = Options()
+        options.headless = True
+        options.add_argument("--window-size=1920,1200")
+        options.add_argument("--incognito")
+        self.driver = webdriver.Firefox(options=options)
+        self.driver.implicitly_wait(3)
+
+    def __repr__(self):
+        return '<HeavyScraper object: url={}>'.format(self.url)
+
+
+
+
 if __name__ == "__main__":
+
+    def test_instantiate_heavy_scraper():
+        """ Test instantiate HeavyScraper object. """
+        s = HeavyScraper()
+        try:
+            assert repr(s) == '<HeavyScraper object: url=None>'
+            print("Passed: test_instantiate_heavy_scraper")
+        except Exception as Err:
+            print("Failed: ", Err)
+        s.driver.close()
+
+
     print('Running unit tests . . .')
-    assert True
+    test_instantiate_heavy_scraper()
     print('Everything Passed.')
