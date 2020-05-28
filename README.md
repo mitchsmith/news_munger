@@ -1,2 +1,4 @@
 # news_munger
-A utility for creating a madlibs-style news digest from a variety of news feeds and scraped web pages 
+A collection of utilities for creating a madlibs-style digest of news headlines and stories from a variety of feeds and scraped web pages.
+
+
