@@ -320,10 +320,16 @@ if __name__ == "__main__":
             self.assertTrue(len(self.o.headlines) > 0, "no data was fetched")
  
 
-class TestAggregator(unittest.TestCase):
-    """   """
-    def test_new_aggregator_retrieves_topics(self):
-        self.assertTrue(False, "Finish writing this test!")
+    class TestAggregator(unittest.TestCase):
+        """   """
+        def setUp(self):
+            self.ag = Aggregator()
+
+
+        def test_new_aggregator_retrieves_topics(self):
+            self.assertTrue(len(self.ag._topics) > 0, "no topic data was fetched")
+
+
 
     unittest.main()
 
