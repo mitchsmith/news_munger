@@ -256,10 +256,63 @@ class APHeadlines(HeavyScraper):
         return '<APHeadlines object: url={}>'.format(self.url)
 
 
+class APArticle(HeavyScraper):
+    def __init__(self, url):
+        self.url = url
+        super().__init__(self.url)
+        print("Loading {} ...".format(self.url))
+        self.driver.get(self.url)
+        print("Article page loaded from {}".format(self.driver.current_url))
+        time.sleep(3)
+        self._title = self.driver.title
+        self._byline = ''
+        try:
+            self._byline = [
+                [e.location_once_scrolled_into_view, e][1]
+                for e in self.driver.find_elements_by_tag_name("span")
+                if re.match("^.*byline", e.get_attribute("className"))
+            ][0].text
+        except:
+            pass
+        print("Byline: {}".format(self._byline))
+        if not self._byline:
+            self._byline = [
+                [e.location_once_scrolled_into_view, e][1]
+                for e in self.driver.find_elements_by_tag_name("div")
+                if re.match("^.+byline", e.get_attribute("className"))
+            ][0].text
+
+        self._timestamp = self.driver.find_element_by_class_name("Timestamp").get_attribute("data-source")
+        self._content = [
+            [s.location_once_scrolled_into_view, s.text][1]
+            for s in self.driver.find_elements_by_tag_name("p")
+        ]
+        self.driver.close()    
+
+    @property
+    def title(self):
+        return self._title
+    
+    @property
+    def byline(self):
+        return self._byline
+
+    @property
+    def timestamp(self):
+        return self._timestamp
+
+    @property
+    def content(self):
+        return self._content
+    
+    def __repr__(self):
+        return "<APArticle object: title={}, timestamp={}, url={}>".format(self.title, self.timestamp, self.url)
+
+
 class Aggregator():
-    """   """
+    """ Collect News Headlines and Stories  """
     def __init__(self):
-        """   """  
+        """ Delcare private vars and retrieve the topic list  """  
         self._topics =[]
         self._headlines = []
         self._stories = []
@@ -269,7 +322,11 @@ class Aggregator():
         except Exception as ex:
             print(ex)
 
-    def collect_headlines(self):
+    def collect_ap_headlines(self):
+        """ Collects AP Headlines for each topic and stores them in
+        self._hadlines. Retruns self._headlines
+        """
+        self._headlines = []
         for topic in self._topics:
             try:
                 t = APHeadlines(topic[0])
@@ -280,94 +337,37 @@ class Aggregator():
         return self._headlines
 
     def cache_headlines(self):
+        """ Dumps self._headlines to json file  """
         with open('headlines.json', 'w+') as outfile:
             json.dump(self._headlines, outfile)
 
     def restore_headlines(self):
+        """ Reads previously cached headlines back into self._headlines """
         try:
-            with open('headlines.json', r) as infile:
+            with open('headlines.json', 'r') as infile:
                 self._headlines = json.load(infile)
         except Exception as ex:
             print("Can't read from 'headlines.json': {}".format(ex))
 
+    @property
+    def topics(self):
+        return self._topics
+    
+    @property
+    def headlines(self):
+        return self._hedlines
+
+    @property
+    def stories(self):
+        return self._stories
+
  
 
 if __name__ == "__main__":
-    import unittest
-
-    class TestSeleniumScrapers(unittest.TestCase):
-
-        def tearDown(self):
-            try:
-                self.o.driver.close()
-            except:
-                pass
-
-        def test_instantiate_heavy_scraper(self):
-            """ Test instantiate HeavyScraper object. """
-            self.o = HeavyScraper()
-            self.assertEqual(
-                             repr(self.o),
-                             "<HeavyScraper object: url=None>",
-                             "incorrect object representation"
-                            )
-            self.o.driver.close()
-
-        def test_instantiate_trends_object(self):
-            """ Test instanttiate Trends object.  """
-            print("Fetching trends data; please be patient . . .")
-            self.o = Trends()
-            self.assertEqual(
-                repr(self.o),
-                "<Trends object: url=https://trends.google.com/trends/trendingsearches/daily?geo=US>",
-                "incorrect object representation"
-                )
-            self.assertTrue(len(self.o.ngrams) > 0, "no data was fetched")
-
-        def test_instantiate_apheadlines(self):
-            """ Test instantiate APHeadlines object  """
-            print("Fetching AP News topics data; please be patient . . .")
-            self.o = APHeadlines()
-            self.assertEqual(
-                    repr(self.o),
-                    "<APHeadlines object: url=https://apnews.com/>",
-                    "incorrect object representation"
-                    )
-            self.assertTrue(len(self.o.topic_list) > 0, "no data was fetched")
-            self.assertEqual(
-                             self.o.topic_list[1][1],
-                             "Entertainment",
-                             "Expected 'Entertainment' but got '{}'".format(
-                                    self.o.topic_list[1][1]
-                                    )
-                            )
-
-        def test_scrape_ap_headlines_by_topic(self):
-            """ Test APHeadlines can retrieve headlines for a given topic  """
-            print("Fetching topic headlines'; please be EXTRA patient . . .")
-            self.o = APHeadlines(2)
-            time.sleep(3)
-            self.assertEqual(
-                             self.o.url,
-                             "https://apnews.com/apf-entertainment",
-                             """Expected 'https://apnews.com/apf-entertainment' but url
-                             is '{}'
-                             """.format(self.o.url)
-                            )
-            
-            self.assertTrue(len(self.o.headlines) > 0, "no data was fetched")
- 
-
-    class TestAggregator(unittest.TestCase):
-        """   """
-        def setUp(self):
-            self.ag = Aggregator()
-
-
-        def test_new_aggregator_retrieves_topics(self):
-            self.assertTrue(len(self.ag._topics) > 0, "no topic data was fetched")
-
-
+    """ run unit tests  """
+    from test import unittest
+    # from tests import TestSeleniumScrapers
+    from tests import TestAggregator
 
     unittest.main()
 
