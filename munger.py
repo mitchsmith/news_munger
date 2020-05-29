@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-""" This module provides a collection of utilities for creating a madlibs-style digest
-of news headlines and stories from a variety of feeds and scraped web pages.
+""" This module provides a collection of utilities for creating a madlibs-
+style digest of news headlines and stories from a variety of feeds and 
+scraped web pages.
 """
 
 import os
@@ -58,7 +59,7 @@ MASCULINE_TITLES = (
         'Mr.',
         'Prince',
         'Sir',
- )
+     )
 
 GENERIC_TITLES = (
         'Admiral',
@@ -113,7 +114,7 @@ GENERIC_TITLES = (
 
 class HeavyScraper:
     """A resource intensive, selemium-based Soup-Nazi countermeasure
-    (Base class for scrapers that must use gekodriver instead of Beautiful Soup)
+    (Base class for scrapers requiring gekodriver instead of Beautiful Soup)
     """
     def __init__(self, url=None):
         self.url = url
@@ -141,7 +142,11 @@ class Trends(HeavyScraper):
         super().__init__(self.url)
         self.driver.get(self.url)
         self._trends = [
-                (topic.text.split("\n")[1], topic.text.split("\n")[2], topic.text.split("\n")[6])
+                (topic.text.split(
+                                  "\n")[1],
+                                  topic.text.split("\n")[2],
+                                  topic.text.split("\n")[6]
+                                 )
                 for topic
                 in self.driver.find_elements_by_class_name('feed-item')
             ]
@@ -176,7 +181,9 @@ class APHeadlines(HeavyScraper):
         time.sleep(3)
         self.ap_nav[1].click()
         time.sleep(3)
-        self.topic_nav = self.driver.find_element_by_class_name('TopicsDropdown').find_elements_by_tag_name('li')
+        self.topic_nav = self.driver.find_element_by_class_name(
+                'TopicsDropdown'
+                ).find_elements_by_tag_name('li')
         # create_topic_list
         for index, li in enumerate(self.topic_nav):
             if index > 0:
@@ -188,7 +195,9 @@ class APHeadlines(HeavyScraper):
             if not topic.find_element_by_tag_name('a').is_displayed():
                 self.ap_nav[1].click()
                 time.sleep(1)
-            print("Navigating to {}".format(topic.find_element_by_tag_name('a').get_attribute('href')))
+            print("Navigating to {}".format(
+                    topic.find_element_by_tag_name('a').get_attribute('href'))
+                )
             topic.find_element_by_tag_name('a').click()
             time.sleep(3)
             self.url = self.driver.current_url
@@ -208,8 +217,42 @@ class APHeadlines(HeavyScraper):
     def __repr__(self):
         return '<APHeadlines object: url={}>'.format(self.url)
 
-   
 
+class Aggregator():
+    """   """
+    def __init__(self):
+        """   """  
+        self._topics =[]
+        self._headlines = []
+        self._stories = []
+        try:
+            t = APHeadlines()
+            self._topics = t.topic_list
+        except Exception as ex:
+            print(ex)
+
+    def collect_headlines(self):
+        for topic in self._topics:
+            try:
+                t = APHeadlines(topic[0])
+                self._headlines.extend(t.headlines)
+            except Exception as ex:
+                print(ex)
+
+        return self._headlines
+
+    def cache_headlines(self):
+        with open('headlines.json', 'w+') as outfile:
+            json.dump(self._headlines, outfile)
+
+    def restore_headlines(self):
+        try:
+            with open('headlines.json', r) as infile:
+                self._headlines = json.load(infile)
+        except Exception as ex:
+            print("Can't read from 'headlines.json': {}".format(ex))
+
+ 
 
 if __name__ == "__main__":
     import unittest
@@ -225,7 +268,11 @@ if __name__ == "__main__":
         def test_instantiate_heavy_scraper(self):
             """ Test instantiate HeavyScraper object. """
             self.o = HeavyScraper()
-            self.assertEqual(repr(self.o), "<HeavyScraper object: url=None>", "incorrect object representation")
+            self.assertEqual(
+                             repr(self.o),
+                             "<HeavyScraper object: url=None>",
+                             "incorrect object representation"
+                            )
             self.o.driver.close()
 
         def test_instantiate_trends_object(self):
@@ -233,10 +280,10 @@ if __name__ == "__main__":
             print("Fetching trends data; please be patient . . .")
             self.o = Trends()
             self.assertEqual(
-                    repr(self.o),
-                    "<Trends object: url=https://trends.google.com/trends/trendingsearches/daily?geo=US>",
-                    "incorrect object representation"
-                    )
+                repr(self.o),
+                "<Trends object: url=https://trends.google.com/trends/trendingsearches/daily?geo=US>",
+                "incorrect object representation"
+                )
             self.assertTrue(len(self.o.ngrams) > 0, "no data was fetched")
 
         def test_instantiate_apheadlines(self):
@@ -252,12 +299,14 @@ if __name__ == "__main__":
             self.assertEqual(
                              self.o.topic_list[1][1],
                              "Entertainment",
-                             "Expected 'Entertainment' but got '{}'".format(self.o.topic_list[1][1])
+                             "Expected 'Entertainment' but got '{}'".format(
+                                    self.o.topic_list[1][1]
+                                    )
                             )
 
         def test_scrape_ap_headlines_by_topic(self):
             """ Test APHeadlines can retrieve headlines for a given topic  """
-            print("Fetching headlines for topic 'Entertainment'; please be EXTRA patient . . .")
+            print("Fetching topic headlines'; please be EXTRA patient . . .")
             self.o = APHeadlines(2)
             time.sleep(3)
             self.assertEqual(
@@ -269,7 +318,12 @@ if __name__ == "__main__":
                             )
             
             self.assertTrue(len(self.o.headlines) > 0, "no data was fetched")
-    
+ 
+
+class TestAggregator(unittest.TestCase):
+    """   """
+    def test_new_aggregator_retrieves_topics(self):
+        self.assertTrue(False, "Finish writing this test!")
 
     unittest.main()
 

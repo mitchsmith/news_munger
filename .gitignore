@@ -1,3 +1,7 @@
+# munger.py cached data
+# (comment out in testing branch to avoid long unittest setUp times)
+headlines.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
