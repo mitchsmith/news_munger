@@ -111,6 +111,44 @@ GENERIC_TITLES = (
         'Swami',
     )
 
+PRESIDENTIOSITUDE = (
+        '17 Time Winner of the Q-Anonopiac Popularity Pole',
+        'Adored Dispicable',
+        'Beloved Orange Dumpling',
+        'Chaste Keeper of American Great-Againness',
+        'Chief Scientist of the United States',
+        'Chosen One',
+        'Delightful Fellow',
+        'Duely Elected Leader fo the Free World',
+        'Effigy of Himself',
+        'First Citizen of the Flies',
+        'Friend to the Obsequious',
+        'Friend to the Downtrodden and the White',
+        'Friend to Mankind',
+        'God Most High',
+        'God King',
+        'Grand Wizard of the USA',
+        'His Royal Highness',
+        'Inspirer of Adoration and Dispair',
+        'Kindness Incarnate,'
+        'Most High King',
+        'Our Overlord and Savior',
+        'Paragon of Honesty',
+        'President of the United States',
+        'President of the United States of America',
+        'Quite High IQ Person',
+        'Rex Devi Felis',
+        'Right Mand for the Job',
+        'Simply the Best President Ever',
+        'Stable Genius',
+        'The Great and Powerful',
+        'The Toast of Tyrants',
+        'The Unimpeachable',
+        'Unabashed Racist',
+        'Very High IQ Person Indeed',
+        "Wastern Civilization's Most Impressive Archon",
+    )
+
 
 class HeavyScraper:
     """A resource intensive, selemium-based Soup-Nazi countermeasure
