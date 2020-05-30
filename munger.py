@@ -320,10 +320,35 @@ class Aggregator():
         self._headlines = []
         self._stories = []
         try:
-            t = APHeadlines()
-            self._topics = t.topic_list
+            if os.path.isfile('topics.json'):
+                self.restore_ap_topics()
+            else:
+                self.refresh_ap_topics()
         except Exception as ex:
             print(ex)
+
+    def refresh_ap_topics(self):
+        """ Collects the list of AP News topics and caches it """
+        try:
+            t = APHeadlines()
+            self._topics = t.topic_list
+            self.cache_ap_topics()
+        except Exception as ex:
+            print(ex)
+
+    def cache_ap_topics(self):
+        """ Dumps self._.topics too json file  """
+        with open('topics.json', 'w+') as outfile:
+            json.dump(self._topics, outfile)
+
+    def restore_ap_topics(self):
+        """ Reads previously cached topics back into self._topics """
+        try:
+            with open('topics.json', 'r') as infile:
+                self._topics = json.load(infile)
+        except Exception as ex:
+            print("Can't read from 'topics.json': {}".format(ex))
+
 
     def collect_ap_headlines(self):
         """ Collects AP Headlines for each topic and stores them in
@@ -352,13 +377,24 @@ class Aggregator():
         except Exception as ex:
             print("Can't read from 'headlines.json': {}".format(ex))
 
+    def fetch_ap_article(self, url):
+        """ Fetches a new APArticle and appends its content to stories
+        ARGS: url
+        """
+        try:
+            article = APArticle(url)
+            self._stories.append(article)
+        except Exception as ex:
+            print("Unable to retrieve article", ex)
+
+
     @property
     def topics(self):
         return self._topics
     
     @property
     def headlines(self):
-        return self._hedlines
+        return self._headlines
 
     @property
     def stories(self):

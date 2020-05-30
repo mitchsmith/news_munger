@@ -90,11 +90,25 @@ class TestAggregator(unittest.TestCase):
     #               "cache file not found"
     #              ) 
 
-    def test_restore_headlines_(self):
+    def test_restore_headlines(self):
         self.ag.restore_headlines()
         self.assertTrue(len(self.ag._headlines) > 0, "no headlines were loaded")
 
     def test_fetch_story_appends_to_stories(self):
-        self.assertTrue(False, "Finish writing this test!")
+        self.ag._stories = []
+        try:
+            if os.path.isfile('headlines.json'):
+                self.ag.restore_headlines()
+            else:
+                self.ag.collect_ap_headlines()
+        except Exception as ex:
+            print("Coulnd't load headlines", ex)
+        url = [h[1] for h in self.ag._headlines if h[0] == 'Politics'][1]
+        self.ag.fetch_ap_article(url)
+        self.assertTrue(
+                        len(self.ag._stories) == 1,
+                        "Failed to retrieve article."
+                       )
+
 
 
