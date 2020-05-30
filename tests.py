@@ -56,7 +56,7 @@ class TestSeleniumScrapers(unittest.TestCase):
         self.assertEqual(
                          self.o.url,
                          "https://apnews.com/apf-entertainment",
-                         """Expected 'https://apnews.com/apf-entertainment' but url
+                         """Expected 'https://apnews.com/apf-entertainment' but url \
                          is '{}'
                          """.format(self.o.url)
                         )
@@ -72,24 +72,29 @@ class TestAggregator(unittest.TestCase):
     def test_new_aggregator_retrieves_topics(self):
         self.assertTrue(len(self.ag._topics) > 0, "no topic data was fetched")
 
-    def test_collect_and_cache_ap_headlines(self):
-        self.ag.collect_ap_headlines()
-        self.hlcount = len(self.ag._headlines)
-        if self.hlcount > 0:
-            if os.path.isfile('headlines.json'):
-                os.rename('headlines.json', 'headlines.bak')
-        self.ag.cache_headlines()
-        self.assertTrue(
-                        self.hlcount > 0,
-                        "no headline data was feched"
-                       )
+    #def test_collect_and_cache_ap_headlines(self):
+    #    self.ag.collect_ap_headlines()
+    #    self.hlcount = len(self.ag._headlines)
+    #    if self.hlcount > 0:
+    #        if os.path.isfile('headlines.json'):
+    #            os.rename('headlines.json', 'headlines.bak')
+    #    self.ag.cache_headlines()
+    #    self.assertTrue(
+    #                    self.hlcount > 0,
+    #                    "no headline data was feched"
+    #                   )
 
-    def test_cache_headlines(self):
-        self.assertTrue(
-                   os.path.isfile('headlines.json'),
-                   "cache file not found"
-                  ) 
+    #def test_cache_headlines(self):
+    #    self.assertTrue(
+    #               os.path.isfile('headlines.json'),
+    #               "cache file not found"
+    #              ) 
 
     def test_restore_headlines_(self):
         self.ag.restore_headlines()
         self.assertTrue(len(self.ag._headlines) > 0, "no headlines were loaded")
+
+    def test_fetch_story_appends_to_stories(self):
+        self.assertTrue(False, "Finish writing this test!")
+
+

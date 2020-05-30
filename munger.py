@@ -119,8 +119,8 @@ PRESIDENTIOSITUDE = (
         'Chief Scientist of the United States',
         'Chosen One',
         'Delightful Fellow',
-        'Duely Elected Leader fo the Free World',
-        'Effigy of Himself',
+        'Elected Leader of the Free World',
+        'Engorged Effigy of Himself',
         'First Citizen of the Flies',
         'Friend to the Obsequious',
         'Friend to the Downtrodden and the White',
@@ -130,23 +130,26 @@ PRESIDENTIOSITUDE = (
         'Grand Wizard of the USA',
         'His Royal Highness',
         'Inspirer of Adoration and Dispair',
-        'Kindness Incarnate,'
+        'Jingoistic Ringleader on High',
+        'Kindness and Compassion Incarnate,'
+        'Lord of All Three Branches',
         'Most High King',
         'Our Overlord and Savior',
-        'Paragon of Honesty',
+        'Paragon of Truthiness',
         'President of the United States',
         'President of the United States of America',
         'Quite High IQ Person',
         'Rex Devi Felis',
-        'Right Mand for the Job',
+        'Right Man for the Nut Job',
         'Simply the Best President Ever',
-        'Stable Genius',
+        'Super Stable Genius',
         'The Great and Powerful',
         'The Toast of Tyrants',
+        'The Suseptible but Invulnerable',
         'The Unimpeachable',
-        'Unabashed Racist',
+        'Unabashed Racialist',
         'Very High IQ Person Indeed',
-        "Wastern Civilization's Most Impressive Archon",
+        "Wastern Civilization's Most Impressive Puppet",
     )
 
 
@@ -365,7 +368,7 @@ class Aggregator():
 
 if __name__ == "__main__":
     """ run unit tests  """
-    from test import unittest
+    import unittest
     # from tests import TestSeleniumScrapers
     from tests import TestAggregator
 
