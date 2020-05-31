@@ -17,6 +17,9 @@ except:
     nltk.download('punkt') 
     from nltk.corpus import stopwords
 from nltk.corpus import names
+from nltk.tokenize import word_tokenize
+from nltk.chunk import ChunkParserI
+from nltk.chunk.util import conlltags2tree
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from collections import deque
@@ -400,13 +403,34 @@ class Aggregator():
     def stories(self):
         return self._stories
 
- 
+
+class PersonChunker(ChunkParserI): 
+    def __init__(self): 
+        self.name_set = set(names.words() + ['Trump']) 
+          
+    def parse(self, tagged_sent): 
+          
+        iobs = [] 
+        in_person = False
+        for word, tag in tagged_sent: 
+            if in_person and tag == 'NNP': 
+                iobs.append((word, tag, 'I-PERSON')) 
+            elif word in self.name_set: 
+                iobs.append((word, tag, 'B-PERSON')) 
+                in_person = True
+            else: 
+                iobs.append((word, tag, 'O')) 
+                in_person = False
+                  
+        # return conlltags2tree(iobs)
+        return(iobs)
+
 
 if __name__ == "__main__":
     """ run unit tests  """
     import unittest
     # from tests import TestSeleniumScrapers
-    from tests import TestAggregator
-
+    # from tests import TestAggregator
+    from tests import TestPersonChunker
     unittest.main()
 

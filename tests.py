@@ -72,23 +72,23 @@ class TestAggregator(unittest.TestCase):
     def test_new_aggregator_retrieves_topics(self):
         self.assertTrue(len(self.ag._topics) > 0, "no topic data was fetched")
 
-    #def test_collect_and_cache_ap_headlines(self):
-    #    self.ag.collect_ap_headlines()
-    #    self.hlcount = len(self.ag._headlines)
-    #    if self.hlcount > 0:
-    #        if os.path.isfile('headlines.json'):
-    #            os.rename('headlines.json', 'headlines.bak')
-    #    self.ag.cache_headlines()
-    #    self.assertTrue(
-    #                    self.hlcount > 0,
-    #                    "no headline data was feched"
-    #                   )
+    def test_collect_and_cache_ap_headlines(self):
+        self.ag.collect_ap_headlines()
+        self.hlcount = len(self.ag._headlines)
+        if self.hlcount > 0:
+            if os.path.isfile('headlines.json'):
+                os.rename('headlines.json', 'headlines.bak')
+        self.ag.cache_headlines()
+        self.assertTrue(
+                        self.hlcount > 0,
+                        "no headline data was feched"
+                       )
 
-    #def test_cache_headlines(self):
-    #    self.assertTrue(
-    #               os.path.isfile('headlines.json'),
-    #               "cache file not found"
-    #              ) 
+    def test_cache_headlines(self):
+        self.assertTrue(
+                   os.path.isfile('headlines.json'),
+                   "cache file not found"
+                  ) 
 
     def test_restore_headlines(self):
         self.ag.restore_headlines()
@@ -111,4 +111,18 @@ class TestAggregator(unittest.TestCase):
                        )
 
 
+class TestPersonChunker(unittest.TestCase):
+    def setUp(self):
+        self.ag = Aggregator()
+        self.ag.restore_headlines()
+        url = [h[1] for h in self.ag.headlines if h[0] == 'Politics'][0]
+        self.ag.fetch_ap_article(url)
+        self.chunker = PersonChunker()
+
+    def test_chunker_can_chunk(self):
+        self.chunks = [
+                  self.chunker.parse(nltk.pos_tag(word_tokenize(s)))
+                  for s in self.ag.stories[0].content[8].split(r'. *')
+                 ]
+        self.assertTrue(len(self.chunks) >= 1, "not chunky enough.")
 
