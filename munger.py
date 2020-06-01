@@ -108,8 +108,8 @@ GENERIC_TITLES = (
         'Rabbi',
         'Reverend',
         'Representative',
-        'Repi.',
         'Rep',
+        'Rep.',
         'Saint',
         'Secretary',
         'Senator',
@@ -414,8 +414,10 @@ class Aggregator():
 
 class PersonChunker(ChunkParserI): 
     def __init__(self): 
-        self.name_set = set(names.words() + ['Trump']) 
-          
+        self.name_set = set(names.words() + ['Trump', 'Alexandria']) 
+        # TODO:
+        # Implement a more robut way of adding names to nltk corpus"
+
     def parse(self, tagged_sent): 
         """   """  
         iobs = [] 
@@ -446,7 +448,6 @@ class PersonChunker(ChunkParserI):
                         ):
                     expansion[i-1][2] = 'B-PERSON'
                     expansion[i][2] = 'I-PERSON'
-        print([tuple(e) for e in expansion] == iobs)            
         if [tuple(e) for e in expansion] != iobs:
             expansion = self.include_titles([tuple(e) for e in expansion])
 
