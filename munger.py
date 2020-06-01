@@ -24,7 +24,7 @@ from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from collections import deque
 
-FEMENIN_TITLES = (
+FEMENINE_TITLES = (
         'Chairwoman',
         'Councilwoman',
         'Congresswoman',
@@ -411,7 +411,7 @@ class PersonChunker(ChunkParserI):
         self.name_set = set(names.words() + ['Trump']) 
           
     def parse(self, tagged_sent): 
-          
+        """   """  
         iobs = [] 
         in_person = False
         for word, tag in tagged_sent: 
@@ -426,6 +426,27 @@ class PersonChunker(ChunkParserI):
                   
         # return conlltags2tree(iobs)
         return(iobs)
+
+    def include_titles(self, iobs):
+        """ """
+        expansion = []
+        pat = re.compile('^[BI]-PERSON$')
+        for i, ent in enumerate(iobs):
+            expansion.append(list(ent))
+            print(expansion)
+            if i > 0 and ent[2] == 'B-PERSON':
+                if iobs[i-1][0] in set(
+                        GENERIC_TITLES + FEMENINE_TITLES + MASCULINE_TITLES
+                        ):
+                    expansion[i-1][2] = 'B-PERSON'
+                    expansion[i][2] = 'I-PERSON'
+        print([tuple(e) for e in expansion] == iobs)            
+        if [tuple(e) for e in expansion] != iobs:
+            expansion = self.include_titles([tuple(e) for e in expansion])
+
+        return [tuple(e) for e in expansion]
+
+
 
 
 if __name__ == "__main__":
