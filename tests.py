@@ -167,4 +167,13 @@ class TestPersonChunker(unittest.TestCase):
                 )
         self.assertTrue(len(snames) == 1, "too many donuts! {}".format(snames))
 
-
+    def test_chunker_can_include_titles(self):
+        ts = nltk.pos_tag(word_tokenize("""
+                Sen. Bernie Sanders and Rep. Alexandria Ocasio-Cortez are also
+                quite fond of donuts.
+                """
+                ))
+        chunks = self.chunker.parse(ts)
+        extended_chunks = self.chunker.include_titles(chunks)
+        print(extended_chunks)
+        self.assertEqual(extended_chunks[0][2], 'B-PERSON', "element isn't labeled")
