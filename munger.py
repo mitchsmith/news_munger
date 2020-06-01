@@ -369,6 +369,8 @@ class Aggregator():
 
     def cache_headlines(self):
         """ Dumps self._headlines to json file  """
+        if os.path.exists('headlines.json'):
+            os.rename('headlines.json', 'headlines.bak')
         with open('headlines.json', 'w+') as outfile:
             json.dump(self._headlines, outfile)
 

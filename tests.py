@@ -125,4 +125,14 @@ class TestPersonChunker(unittest.TestCase):
                   for s in self.ag.stories[0].content[8].split(r'. *')
                  ]
         self.assertTrue(len(self.chunks) >= 1, "not chunky enough.")
+    
+    def test_chunker_labels_first_names(self):
+        ts = nltk.pos_tag(word_tokenize(
+                "Franklin loves Dunkin Donuts, and so does Sharon."
+                ))
+        self.chunks = self.chunker.parse(ts)
+        fnames = [c[0] for c in self.chunks if c[2] == 'B-PERSON']
+        self.assertEqual(fnames[0], "Franklin", "Franklin has no label")
+        self.assertEqual(fnames[-1], "Sharon", "Sharon has no label")
+        self.assertEqual(len(fnames), 2, "found more than two names")
 
