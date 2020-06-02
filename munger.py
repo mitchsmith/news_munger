@@ -461,6 +461,50 @@ class PersonChunker(ChunkParserI):
         return conlltags2tree(self.parse(tagged_sent, simple))
 
 
+class PersonScanner():
+    """   """
+    def __init__(self):
+        """   """
+        self._chunker = PersonChunker()
+        self._person_refs = []
+        self._people = []
+        self._document_array = []
+        self._trees = []
+
+    def scan(self, document):
+        """   """
+        for para in document:
+            tp = nltk.pos_tag(word_tokenize(para))
+            tagged_sents = self.get_tagged_sents(tp)
+            self._document_array.append(tagged_sents)
+            for s in tagged_sents:
+                tree = self._chunker.parse_tree(s)
+                self._trees.append(tree)
+    
+    def get_tagged_sents(self, batch):
+        tagged_sents = []
+        try:
+            sep = batch.index(('.', '.')) + 1
+        except ValueError:
+            batch.append(('.', '.')) 
+            tagged_sents.append(batch)
+            return tagged_sents
+
+        if sep < len(batch):
+            first, remnant = (batch[:sep], batch[sep:])
+            tagged_sents.append(first)
+            tagged_sents.extend(self.get_tagged_sents(remnant))
+        else:
+            tagged_sents.append(batch)
+        return tagged_sents
+
+
+
+
+
+    
+
+
 if __name__ == "__main__":
     """ run unit tests  """
     import unittest
