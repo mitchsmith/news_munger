@@ -121,7 +121,7 @@ class TestPersonChunker(unittest.TestCase):
 
 #    def test_chunker_can_chunk(self):
 #        self.chunks = [
-#                  self.chunker.parse(nltk.pos_tag(word_tokenize(s)))
+#                  self.chunker.parse(nltk.pos_tag(word_tokenize(s)), simple=True)
 #                  for s in self.ag.stories[0].content[8].split(r'. *')
 #                 ]
 #        self.assertTrue(len(self.chunks) >= 1, "not chunky enough.")
@@ -130,7 +130,7 @@ class TestPersonChunker(unittest.TestCase):
         ts = nltk.pos_tag(word_tokenize(
                 "Franklin loves Dunkin Donuts, and so does Sharon."
                 ))
-        self.chunks = self.chunker.parse(ts)
+        self.chunks = self.chunker.parse(ts, simple=True)
         fnames = [c[0] for c in self.chunks if c[2] == 'B-PERSON']
         self.assertEqual(fnames[0], "Franklin", "Franklin has no label")
         self.assertEqual(fnames[-1], "Sharon", "Sharon has no label")
@@ -141,7 +141,7 @@ class TestPersonChunker(unittest.TestCase):
                 Frank Sharon loves Sharon Frank, but Sharon loves Duncan.
                 """
                 ))
-        self.chunks = self.chunker.parse(ts)
+        self.chunks = self.chunker.parse(ts, simple=True)
         snames = [c[0] for c in self.chunks if c[2] == 'I-PERSON']
         self.assertEqual(snames[0], "Sharon", "Sharon has no label")
         self.assertEqual(snames[-1], "Frank", "Frank has no label")
@@ -157,7 +157,7 @@ class TestPersonChunker(unittest.TestCase):
                 and Sharon do.
                 """
                 ))
-        self.chunks = self.chunker.parse(ts)
+        self.chunks = self.chunker.parse(ts, simple=True)
         fnames = [c[0] for c in self.chunks if c[2] == 'B-PERSON']
         snames = [c[0] for c in self.chunks if c[2] == 'I-PERSON']
         self.assertEqual(
@@ -174,6 +174,16 @@ class TestPersonChunker(unittest.TestCase):
                 """
                 ))
         chunks = self.chunker.parse(ts)
-        extended_chunks = self.chunker.include_titles(chunks)
-        print(extended_chunks)
-        self.assertEqual(extended_chunks[0][2], 'B-PERSON', "element isn't labeled")
+        self.assertEqual(chunks[0][2], 'B-PERSON', "element isn't labeled")
+
+    def test_chunker_parse_tree_returns_a_tree(self):
+        ts = nltk.pos_tag(word_tokenize("""
+                Sen. Bernie Sanders and Rep. Alexandria Ocasio-Cortez are also
+                quite fond of donuts.
+                """
+                ))
+        tree = self.chunker.parse_tree(ts)
+        self.assertEqual(tree[0].label(), 'PERSON', "element isn't labeled")
+
+
+

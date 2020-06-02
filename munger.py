@@ -418,7 +418,25 @@ class PersonChunker(ChunkParserI):
         # TODO:
         # Implement a more robut way of adding names to nltk corpus"
 
-    def parse(self, tagged_sent): 
+
+    def _include_titles(self, iobs):
+        """ """
+        expansion = []
+        for i, ent in enumerate(iobs):
+            expansion.append(list(ent))
+            if i > 0 and ent[2] == 'B-PERSON':
+                if iobs[i-1][0] in set(
+                        GENERIC_TITLES + FEMENINE_TITLES + MASCULINE_TITLES
+                        ):
+                    expansion[i-1][2] = 'B-PERSON'
+                    expansion[i][2] = 'I-PERSON'
+        if [tuple(e) for e in expansion] != iobs:
+            expansion = self._include_titles([tuple(e) for e in expansion])
+
+        return [tuple(e) for e in expansion]
+
+
+    def parse(self, tagged_sent, simple=False): 
         """   """  
         iobs = [] 
         in_person = False
@@ -431,29 +449,16 @@ class PersonChunker(ChunkParserI):
             else: 
                 iobs.append((word, tag, 'O')) 
                 in_person = False
-                  
-        # return conlltags2tree(iobs)
-        return(iobs)
+        
+        if simple:
+            return iobs
 
-    def include_titles(self, iobs):
-        """ """
-        expansion = []
-        pat = re.compile('^[BI]-PERSON$')
-        for i, ent in enumerate(iobs):
-            expansion.append(list(ent))
-            print(expansion)
-            if i > 0 and ent[2] == 'B-PERSON':
-                if iobs[i-1][0] in set(
-                        GENERIC_TITLES + FEMENINE_TITLES + MASCULINE_TITLES
-                        ):
-                    expansion[i-1][2] = 'B-PERSON'
-                    expansion[i][2] = 'I-PERSON'
-        if [tuple(e) for e in expansion] != iobs:
-            expansion = self.include_titles([tuple(e) for e in expansion])
-
-        return [tuple(e) for e in expansion]
+        return self._include_titles(iobs)
 
 
+    def parse_tree(self, tagged_sent, simple=False):
+        """   """
+        return conlltags2tree(self.parse(tagged_sent, simple))
 
 
 if __name__ == "__main__":
