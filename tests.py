@@ -188,7 +188,38 @@ class TestPersonChunker(unittest.TestCase):
 
 class TestPersonScanner(unittest.TestCase):
     """   """
-    def test_placeholder(self):
-        self.assertTrue(False, "Finish working on PersonScaner.")
+    def setUp(self):
+        with open('test_story.json') as infile:
+            self.story = json.load(infile)
+        self.scanner = PersonScanner()
 
+    def test_can_chunk_sentences(self):
+        para = """This paragraph contains three sentenences. This is the second.
+        There was one more left at the end before counting this unpunctutated one
+        """
+        tp = nltk.pos_tag(word_tokenize(para))
+        tagged_sents = self.scanner.get_tagged_sents(tp)
+        self.assertEqual(len(tagged_sents), 3, "Didn't find all three sentences.")
+
+    def test_scan_gives_one_tree_per_sentence(self):
+        self.scanner.scan(self.story)
+        self.assertEqual(
+                         len(self.scanner._document_array),
+                         len(self.story),
+                         "expected {} of 29 paragraphs".format(len(self.story))
+                        )
+        self.assertEqual(
+                         len(self.scanner._trees),
+                         sum([len(p) for p in self.scanner._document_array]),
+                         "tree count doesn't match tagged sentence count"    
+                        )
+        
+    def test_person_scanner_finds_people(self):
+        self.scanner.scan(self.story)
+        self.assertTrue(self.scanner._people, "Where are all the lovely people?")
+        self.assertTrue(
+                         'Atlanta Mayor Keisha Lance Bottoms' in
+                         self.scanner._people,
+                         'Expected "Atlanta Mayor Keisha Lance Bottoms"'
+                        )
 

@@ -480,7 +480,18 @@ class PersonScanner():
             for s in tagged_sents:
                 tree = self._chunker.parse_tree(s)
                 self._trees.append(tree)
-    
+        for tree in self._trees:
+            name_tags = [
+                         ' '.join([n[0] for n in t])
+                         for t in tree.subtrees()
+                         if t.label() == 'PERSON'
+                        ] 
+            self._person_refs.extend(name_tags)
+            self._people.extend(sorted(set(
+                    [n for n in name_tags if len(n.split(' ')) > 1]
+                )))
+
+
     def get_tagged_sents(self, batch):
         tagged_sents = []
         try:
@@ -510,7 +521,7 @@ if __name__ == "__main__":
     import unittest
     # from tests import TestSeleniumScrapers
     # from tests import TestAggregator
-    from tests import TestPersonChunker
+    # from tests import TestPersonChunker
     from tests import TestPersonScanner
     unittest.main()
 
