@@ -221,5 +221,12 @@ class TestPersonScanner(unittest.TestCase):
                          'Atlanta Mayor Keisha Lance Bottoms' in
                          self.scanner._people,
                          'Expected "Atlanta Mayor Keisha Lance Bottoms"'
-                        )
+                       )
+
+    def test_pscanner_can_permute_names(self):
+        self.assertTrue(False, "Finish defining permute_names()")
+
+    def test_pscanner_can_locate_name_refs(self):
+        self.assertTrue(False, "Finish defining locate_name_refs()")
+
 

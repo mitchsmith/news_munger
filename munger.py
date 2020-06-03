@@ -491,6 +491,13 @@ class PersonScanner():
                     [n for n in name_tags if len(n.split(' ')) > 1]
                 )))
 
+    def locate_person_ref(self, person):
+        """   """
+        pass
+
+    def permute_names(self, person):
+        """   """
+        pass
 
     def get_tagged_sents(self, batch):
         tagged_sents = []
@@ -508,7 +515,6 @@ class PersonScanner():
         else:
             tagged_sents.append(batch)
         return tagged_sents
-
 
 
 
