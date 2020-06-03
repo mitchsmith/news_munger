@@ -186,4 +186,9 @@ class TestPersonChunker(unittest.TestCase):
         self.assertEqual(tree[0].label(), 'PERSON', "element isn't labeled")
 
 
+class TestPersonScanner(unittest.TestCase):
+    """   """
+    def test_placeholder(self):
+        self.assertTrue(False, "Finish working on PersonScaner.")
+
 

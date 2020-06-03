@@ -511,5 +511,6 @@ if __name__ == "__main__":
     # from tests import TestSeleniumScrapers
     # from tests import TestAggregator
     from tests import TestPersonChunker
+    from tests import TestPersonScanner
     unittest.main()
 
