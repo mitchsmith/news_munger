@@ -509,6 +509,60 @@ class PersonScanner():
                                 break
         return refs
 
+    def get_person_info(self, person):
+        """   """
+        gender = None
+        honorific = None
+        role = None
+        first = None
+        middle = None
+        last = None
+        suffix = None
+        tokens = deque(person.split(' '))
+        if tokens[0] in MASCULINE_TITLES:
+            honorific = tokens.popleft()
+            gender = "Male"
+        elif tokens[0] in FEMENINE_TITLES:
+            honorific = tokens.popleft()
+            gender = "Female"
+        if tokens[0] in GENERIC_TITLES:
+            role = tokens.popleft();
+        elif re.match(r'\w\w+\.', tokens[0]):
+            role = tokens.popleft()
+        # At this point, element 0 should be either the first name or initial.
+        if tokens[0] in names.words('female.txt'):
+            if not gender:
+                gender = 'Female'
+        if tokens[0] in names.words('male.txt'):
+            if not gender:
+                gender = 'Male'
+            elif not honorific:
+                gender = 'Unknown'
+        first = tokens.popleft()
+        try:
+            # Check for suffix: 'Esq.', 'Jr.'. 'Sr. etc. 
+            if re.match(r'.+\.|Junior|Senior|[IVX]+$', tokens[-1]):
+                suffix = tokens.pop()
+        except IndexError:
+            pass
+        else:
+            if tokens:
+                last = tokens.pop()
+            if tokens:
+                middle = ' '.join(tokens)
+        if honorific and not last:
+            last = first
+            first = None
+        return {
+                    'gender': gender,
+                    'honorific': honorific,
+                    'role': role,
+                    'first': first,
+                    'middle': middle,
+                    'last': last,
+                    'suffix': suffix,
+                }
+
     def permute_names(self, person):
         """   """
         pass
