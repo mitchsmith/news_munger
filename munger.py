@@ -491,9 +491,23 @@ class PersonScanner():
                     [n for n in name_tags if len(n.split(' ')) > 1]
                 )))
 
-    def locate_person_ref(self, person):
+    def locate_person_refs(self, person):
         """   """
-        pass
+        refs = {}
+        for nom in person.split(' '):
+            refs[nom] = []
+            for i, p in enumerate(self._document_array):
+                for j, s in enumerate(p):
+                    haystack = [t[0] for t in s]
+                    if nom in haystack:
+                        while haystack:
+                            try:
+                                k = haystack.index(nom)
+                                refs[nom].append((i, j, k))
+                                haystack = haystack[k+1:]
+                            except ValueError:
+                                break
+        return refs
 
     def permute_names(self, person):
         """   """

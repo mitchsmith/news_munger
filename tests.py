@@ -223,10 +223,12 @@ class TestPersonScanner(unittest.TestCase):
                          'Expected "Atlanta Mayor Keisha Lance Bottoms"'
                        )
 
+    def test_pscanner_can_locate_name_refs(self):
+        self.scanner.scan(self.story)
+        refs = self.scanner.locate_person_refs('Sen. Amy Klobuchar')
+        self.assertEqual(len(refs['Klobuchar']), 4, "expected 4 Klobuchar refs")
+
     def test_pscanner_can_permute_names(self):
         self.assertTrue(False, "Finish defining permute_names()")
-
-    def test_pscanner_can_locate_name_refs(self):
-        self.assertTrue(False, "Finish defining locate_name_refs()")
 
 
