@@ -24,7 +24,7 @@ from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from collections import deque
 
-FEMENINE_TITLES = (
+FEMININE_TITLES = (
         'Chairwoman',
         'Councilwoman',
         'Congresswoman',
@@ -426,7 +426,7 @@ class PersonChunker(ChunkParserI):
             expansion.append(list(ent))
             if i > 0 and ent[2] == 'B-PERSON':
                 if iobs[i-1][0] in set(
-                        GENERIC_TITLES + FEMENINE_TITLES + MASCULINE_TITLES
+                        GENERIC_TITLES + FEMININE_TITLES + MASCULINE_TITLES
                         ):
                     expansion[i-1][2] = 'B-PERSON'
                     expansion[i][2] = 'I-PERSON'
@@ -522,7 +522,7 @@ class PersonScanner():
         if tokens[0] in MASCULINE_TITLES:
             honorific = tokens.popleft()
             gender = "Male"
-        elif tokens[0] in FEMENINE_TITLES:
+        elif tokens[0] in FEMININE_TITLES:
             honorific = tokens.popleft()
             gender = "Female"
         if tokens[0] in GENERIC_TITLES:

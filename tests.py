@@ -228,7 +228,18 @@ class TestPersonScanner(unittest.TestCase):
         refs = self.scanner.locate_person_refs('Sen. Amy Klobuchar')
         self.assertEqual(len(refs['Klobuchar']), 4, "expected 4 Klobuchar refs")
 
+    def test_ascanner_distiguishe_gender_etc(self):
+        self.scanner.scan(self.story)
+        pinfo = self.scanner.get_person_info('Sen. Amy Klobuchar')
+        self.assertEqual(pinfo['first'], 'Amy', "expected first name Amy")
+        self.assertEqual(pinfo['last'], 'Klobuchar', "expected last name Klobuchar")
+        self.assertEqual(pinfo['gender'], 'Female', "expected gender Female")
+        self.assertEqual(pinfo['role'], 'Sen.', "expected role Sen.")
+        self.assertEqual(pinfo['honorific'], None, "expected honorific None")
+        self.assertEqual(pinfo['suffix'], None, "expected suffix None")
+
     def test_pscanner_can_permute_names(self):
+        self.scanner.scan(self.story)
         self.assertTrue(False, "Finish defining permute_names()")
 
 
