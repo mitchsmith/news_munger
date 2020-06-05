@@ -223,12 +223,19 @@ class TestPersonScanner(unittest.TestCase):
                          'Expected "Atlanta Mayor Keisha Lance Bottoms"'
                        )
 
-    def test_pscanner_can_locate_name_refs(self):
+    def test_pscanner_can_locate_person_refs(self):
         self.scanner.scan(self.story)
         refs = self.scanner.locate_person_refs('Sen. Amy Klobuchar')
         self.assertEqual(len(refs['Klobuchar']), 4, "expected 4 Klobuchar refs")
 
-    def test_ascanner_distiguishe_gender_etc(self):
+    def test_person_refs_identify_people(self):
+        self.scanner.scan(self.story)
+        self.assertEqual(
+                    self.scanner.locate_person_refs('Floyd'),
+                    self.scanner.locate_person_refs('George Floyd')
+                   )
+
+    def test_pscanner_distiguishes_gender_etc(self):
         self.scanner.scan(self.story)
         pinfo = self.scanner.get_person_info('Sen. Amy Klobuchar')
         self.assertEqual(pinfo['first'], 'Amy', "expected first name Amy")

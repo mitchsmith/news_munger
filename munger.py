@@ -494,7 +494,8 @@ class PersonScanner():
     def locate_person_refs(self, person):
         """   """
         refs = {}
-        for nom in person.split(' '):
+        noms = person.split(' ')
+        for nom in noms:
             refs[nom] = []
             for i, p in enumerate(self._document_array):
                 for j, s in enumerate(p):
@@ -507,6 +508,16 @@ class PersonScanner():
                                 haystack = haystack[k+1:]
                             except ValueError:
                                 break
+                        tree_index = sum([len(p) for p in self._document_array[:i]]) + j
+                        context = [
+                                   t for t in self._trees[tree_index].subtrees()
+                                   if t.label() == 'PERSON'
+                                   and nom in [tag[0] for tag in t]
+                                  ]
+                        for c in context:
+                            if len(c) > len(noms):
+                                aka =' '.join([tup[0] for tup in c])
+                                return self.locate_person_refs(aka)
         return refs
 
     def get_person_info(self, person):
@@ -565,7 +576,11 @@ class PersonScanner():
 
     def permute_names(self, person):
         """   """
-        pass
+        permutations = []
+        refs = self.get_person_refs(person)
+
+        #info = self.get_person_info()
+        
 
     def get_tagged_sents(self, batch):
         tagged_sents = []
