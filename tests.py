@@ -247,6 +247,8 @@ class TestPersonScanner(unittest.TestCase):
 
     def test_pscanner_can_permute_names(self):
         self.scanner.scan(self.story)
-        self.assertTrue(False, "Finish defining permute_names()")
-
-
+        self.assertEqual(
+                self.scanner.permute_names('Biden'),
+                ['Joe', 'Biden', 'Joe Biden', 'Mr. Biden', 'Mr. Joe Biden'],
+                "Expected 5 elements"
+            )

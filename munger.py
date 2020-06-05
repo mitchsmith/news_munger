@@ -529,7 +529,7 @@ class PersonScanner():
         middle = None
         last = None
         suffix = None
-        tokens = deque(person.split(' '))
+        tokens = deque([p for p in person.split(' ') if re.search(r'\w+', p)])
         if tokens[0] in MASCULINE_TITLES:
             honorific = tokens.popleft()
             gender = "Male"
@@ -577,10 +577,49 @@ class PersonScanner():
     def permute_names(self, person):
         """   """
         permutations = []
-        refs = self.get_person_refs(person)
+        flagged = False
+        refs = self.locate_person_refs(person)
+        info = self.get_person_info(' '.join(refs.keys()))
+        parts = [x for x in info.keys() if info[x]]
+        if len(parts) == 1 and 'first' in parts:
+            parts[0] = 'last'
+            info['last'] = info['firt']
+            info['first'] = None
+            skip = 0
+        if not [x for x in ['honorific', 'role'] if x in parts]:
+            if info['gender'] == 'Female':
+                info['honorific'] = 'Ms.'
+            elif info['gender'] == 'Male':
+                info['honorific'] = "Mr."
+            parts.append('honorific')
+        if 'first' in parts:
+            permutations.append(info['first'])
+            skip = 1
+        else:
+            skip = 0
+        if 'last' in parts:
+            permutations.append(info['last'])
+        if 'first' in parts and 'last' in parts:
+            permutations.append("{} {}".format(info['first'], info['last']))
+        if 'middle' in parts:
+            if len(info['middle'].split(' ')) > 1:
+                # consider this suspect, but deal with it later
+                flagged = True
+                permutations.append(
+                    "{} {} {}".format(info['first'], info['middle'], info['last'])
+                    )
+        end = len(permutations)
+        for el in [x for x in ['honorific', 'role'] if x in parts]:
+            prefixes = []
+            for p in permutations[skip:end]:
+                prefixes.append("{} {}".format(info[el], p))
+            permutations.extend(prefixes)
+        if 'suffix' in parts:
+            suffixed = []
+            for p in permutations:
+                suffixed.append("{} {}".format(p, info['suffix']))
+        return permutations
 
-        #info = self.get_person_info()
-        
 
     def get_tagged_sents(self, batch):
         tagged_sents = []
