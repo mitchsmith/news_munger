@@ -164,9 +164,12 @@ PRESIDENTIOSITUDE = (
 
 class HeavyScraper:
     """A resource intensive, selemium-based Soup-Nazi countermeasure
+
     (Base class for scrapers requiring gekodriver instead of Beautiful Soup)
     """
+
     def __init__(self, url=None):
+        """ARGS: url ; DEFAULT: None """
         self.url = url
         options = Options()
         options.headless = True
@@ -180,15 +183,13 @@ class HeavyScraper:
 
 
 class Trends(HeavyScraper):
-    """
-    Top Google Search terms scraped from Google Trends
-    """
+    """Top Google Search terms scraped from Google Trends"""
+
     url = "https://trends.google.com/trends/trendingsearches/daily?geo=US"
 
     def __init__(self):
-        """ Fetches a list of trending google search terms and immediately
-        closes the marionette driver 
-        """
+        """ Fetch search terms and immediately close the marionette driver"""
+
         super().__init__(self.url)
         self.driver.get(self.url)
         self._trends = [
@@ -216,10 +217,12 @@ class Trends(HeavyScraper):
 
 class APHeadlines(HeavyScraper):
     """ Scrape AP News Topics and optionally retrieve headlines by topic  """
+
     url = "https://apnews.com/"
     def __init__(self, topic_id=0):
-        """ Fetches the list of topics and immediatly closes the marionette
-        driver. If the topic_id arg is supplied, headlines filed under that
+        """ Fetch topics and immediatly close the marionette driver.
+        
+        If the topic_id arg is supplied, headlines filed under that
         topic are also retrieved before closing the marionette driver.
         """
         super().__init__(self.url)
@@ -269,7 +272,14 @@ class APHeadlines(HeavyScraper):
 
 
 class APArticle(HeavyScraper):
+    """ AP Article contents fetched and scraped from the specified url."""
+    
     def __init__(self, url):
+        """ Fetch and scrape news article and close the marionette driver.
+
+        ARGS:
+            url (required)
+        """
         self.url = url
         super().__init__(self.url)
         print("Loading {} ...".format(self.url))
@@ -294,7 +304,9 @@ class APArticle(HeavyScraper):
                 if re.match("^.+byline", e.get_attribute("className"))
             ][0].text
 
-        self._timestamp = self.driver.find_element_by_class_name("Timestamp").get_attribute("data-source")
+        self._timestamp = self.driver.find_element_by_class_name(
+                "Timestamp"
+                ).get_attribute("data-source")
         self._content = [
             [s.location_once_scrolled_into_view, s.text][1]
             for s in self.driver.find_elements_by_tag_name("p")
@@ -318,13 +330,17 @@ class APArticle(HeavyScraper):
         return self._content
     
     def __repr__(self):
-        return "<APArticle object: title={}, timestamp={}, url={}>".format(self.title, self.timestamp, self.url)
+        return "<APArticle object: title={}, timestamp={}, url={}>".format(
+                self.title, self.timestamp, self.url
+                )
 
 
 class Aggregator():
     """ Collect News Headlines and Stories  """
+
     def __init__(self):
         """ Delcare private vars and retrieve the topic list  """  
+
         self._topics =[]
         self._headlines = []
         self._stories = []
@@ -338,6 +354,7 @@ class Aggregator():
 
     def refresh_ap_topics(self):
         """ Collects the list of AP News topics and caches it """
+        
         try:
             t = APHeadlines()
             self._topics = t.topic_list
@@ -347,11 +364,13 @@ class Aggregator():
 
     def cache_ap_topics(self):
         """ Dumps self._.topics too json file  """
+        
         with open('topics.json', 'w+') as outfile:
             json.dump(self._topics, outfile)
 
     def restore_ap_topics(self):
         """ Reads previously cached topics back into self._topics """
+        
         try:
             with open('topics.json', 'r') as infile:
                 self._topics = json.load(infile)
@@ -360,9 +379,11 @@ class Aggregator():
 
 
     def collect_ap_headlines(self):
-        """ Collects AP Headlines for each topic and stores them in
-        self._hadlines. Retruns self._headlines
+        """ Collects AP Headlines by topic in self._hadlines.
+        
+        Retruns self._headlines
         """
+        
         self._headlines = []
         for topic in self._topics:
             try:
@@ -375,6 +396,7 @@ class Aggregator():
 
     def cache_headlines(self):
         """ Dumps self._headlines to json file  """
+        
         if os.path.exists('headlines.json'):
             os.rename('headlines.json', 'headlines.bak')
         with open('headlines.json', 'w+') as outfile:
@@ -382,6 +404,7 @@ class Aggregator():
 
     def restore_headlines(self):
         """ Reads previously cached headlines back into self._headlines """
+        
         try:
             with open('headlines.json', 'r') as infile:
                 self._headlines = json.load(infile)
@@ -390,14 +413,15 @@ class Aggregator():
 
     def fetch_ap_article(self, url):
         """ Fetches a new APArticle and appends its content to stories
+        
         ARGS: url
         """
+        
         try:
             article = APArticle(url)
             self._stories.append(article)
         except Exception as ex:
             print("Unable to retrieve article", ex)
-
 
     @property
     def topics(self):
@@ -411,16 +435,34 @@ class Aggregator():
     def stories(self):
         return self._stories
 
+    def __repr__(self):
+        return "<Aggregator object - properties: {}>".format(
+                "'topics', 'headlines', 'stories'"
+                )
 
-class PersonChunker(ChunkParserI): 
+
+
+class PersonChunker(ChunkParserI):
+    """Named Entity Recognizer for PERSON category."""
+    
     def __init__(self): 
+        """ Monkey patch the defailt nltk names onject  """
+        
         self.name_set = set(names.words() + ['Trump', 'Alexandria']) 
         # TODO:
         # Implement a more robut way of adding names to nltk corpus"
 
 
     def _include_titles(self, iobs):
-        """ """
+        """Ammend PERSON entities to include personal or professional titles.
+        
+        ARGS:
+            iobs (required) list of iob tag 3-tuples
+
+        RETURNS:
+            lest of iob tag 3-tuples
+        """
+        
         expansion = []
         for i, ent in enumerate(iobs):
             expansion.append(list(ent))
@@ -437,7 +479,16 @@ class PersonChunker(ChunkParserI):
 
 
     def parse(self, tagged_sent, simple=False): 
-        """   """  
+        """Apply PERSON labels to person names in supplied pos-tagged sentence.
+        
+        ARGS:
+            tagged_sent (required) list of pos tag tuples
+            simple (default = False) set True to prevent including titles
+        
+        RETURNS:
+            list of iob tag 3-tuples
+        """  
+        
         iobs = [] 
         in_person = False
         for word, tag in tagged_sent: 
@@ -457,14 +508,32 @@ class PersonChunker(ChunkParserI):
 
 
     def parse_tree(self, tagged_sent, simple=False):
-        """   """
+        """Apply PERSON labels to person names in supplied pos-tagged sentence,
+
+        (Same as parse(), but returns sentence as an nltk Tree object)
+        
+        ARGS:
+            tagged_sent (required) list of pos tag tuples
+            simple      (default = False) set True to prevent including titles
+
+        RETURNS:
+            Tree object
+        """
+        
         return conlltags2tree(self.parse(tagged_sent, simple))
+
+    def __repr__(self):
+        return "<PersonChunker object - methods: {}>".format(
+                "'parse', 'parse_tree'"
+                )
 
 
 class PersonScanner():
-    """   """
+    """ Location, labeling, and collation of named PERSON entities """
+
     def __init__(self):
-        """   """
+        """ Instantiate a new PersonChunker instance and declare vars"""
+        
         self._chunker = PersonChunker()
         self._person_refs = []
         self._people = []
@@ -472,7 +541,14 @@ class PersonScanner():
         self._trees = []
 
     def scan(self, document):
-        """   """
+        """ Tokenize text into paragraphs, sentences and pos-taged words
+        
+        The result is then stored in self._document_array.
+
+        ARGS:
+            document (required) minimally sturctured text
+        """
+        
         for para in document:
             tp = nltk.pos_tag(word_tokenize(para))
             tagged_sents = self.get_tagged_sents(tp)
@@ -492,7 +568,15 @@ class PersonScanner():
                 )))
 
     def locate_person_refs(self, person):
-        """   """
+        """ Index and collate PERSON by location in self._document_array
+        
+        ARGS:
+            person (required) string: all or part of the person's full name
+
+        RETURNS:
+            dict of the form {'namesegmment': [(i,j,k), ...]} 
+        """
+        
         refs = {}
         noms = person.split(' ')
         for nom in noms:
@@ -521,7 +605,15 @@ class PersonScanner():
         return refs
 
     def get_person_info(self, person):
-        """   """
+        """ try to determine gender, etc. from the most complete PERSON reference.
+        
+        ARGS:
+            person (required) string: all or part of the person's full name
+
+        RETURNS:
+            dict containing discoverable PERSON attributes
+        """
+
         gender = None
         honorific = None
         role = None
@@ -575,7 +667,15 @@ class PersonScanner():
                 }
 
     def permute_names(self, person):
-        """   """
+        """ Assemble possible forms of address based on available PERSON info.
+        
+        ARGS:
+            person (required) string: all or part of the person's full name
+
+        RETURNS:
+            list of variations on PERSON's name
+        """
+
         permutations = []
         flagged = False
         refs = self.locate_person_refs(person)
@@ -622,6 +722,14 @@ class PersonScanner():
 
 
     def get_tagged_sents(self, batch):
+        """Split pos_tagged paragraphs into sentences.
+        
+        ARGS:
+            batch (required) list of pos_tags
+        
+        RETURNS: list of lists of pos_tags (tagged_sentences) 
+        """
+        
         tagged_sents = []
         try:
             sep = batch.index(('.', '.')) + 1
@@ -639,10 +747,30 @@ class PersonScanner():
         return tagged_sents
 
 
+    @property
+    def person_refs(self):
+        return self._person_refs
 
-
+    @property
+    def people(self):
+        return self._people
     
+    @property
+    def document_array(self):
+        return self._document_array
+    
+    @property
+    def trees(self):
+        return self._trees
 
+    def __repr__(self):
+        return "<PersonScanner object - properties: {}>".format(
+                "'person_refs', 'people', 'document_array', 'trees'"
+                )
+
+
+
+        
 
 if __name__ == "__main__":
     """ run unit tests  """
