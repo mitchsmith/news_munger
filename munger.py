@@ -764,20 +764,86 @@ class PersonScanner():
         return self._trees
 
     def __repr__(self):
-        return "<PersonScanner object - properties: {}>".format(
-                "'person_refs', 'people', 'document_array', 'trees'"
-                )
+        return "<PersonScanner {}>".format(" ".join(self._person_refs.keys()))
 
 
-
+class Conflation():
+    """Conflate News Stories """
+    def __init__(self, articles, *args):
         
+        """   """
+        self.conflation = []
+        self.scanners = []
+        try:
+            if type(articles) == list:
+                self.articles = articles
+            else:
+                self.articles = [articles]
+                self.articles.extend(args)
+            for i, a in enumerate(self.articles):
+                if type(a) == APArticle:
+                    self.scanners.append(PersonScanner())
+                    self.scanners[i].scan(a.content)
+                else:
+                    raise TypeError("Conflation requires APArticle objects")
+        except Exception as err:
+            print(err)
+            raise
+
+    def interweave(self):
+        counters = [0, 0]
+        disc = ['topic', 'comment']
+        disc_index = 0
+        doc_index = 0
+        if len(self.scanners[0].document_array) > len(self.scanners[1].document_array):
+            doc_index = 1
+        start = doc_index
+        for i, p in enumerate(self.scanners[start].document_array):
+            if i == 0:
+                self.conflation.append([p[0]])
+                # disc_index = 1
+            else:
+                if disc[disc_index] == 'topic':
+                    self.conflation.append([self.scanners[doc_index].document_array[i][0]])
+                    disc_index = 1
+                elif len(self.scanners[doc_index].document_array[i]) > 1:
+                    self.conflation[-1].append(self.scanners[doc_index].document_array[i][1:])
+                    disc_index = 0
+                else:
+                    self.conflation[-1].append(self.scanners[doc_index].document_array[i][0])
+                    disc_index = 0
+              
+            doc_index = (doc_index + 1) % 2
+
+def load_conflation():
+    ag = Aggregator()
+    ag.restore_headlines()
+    ag.restore_ap_topics()
+    sports = [h for h in ag.headlines if h[0] == 'Sports'][1][1]
+    a1 = APArticle(sports)
+    religion = [h for h in ag.headlines if h[0] == 'Religion'][1][1]
+    a2 = APArticle(religion)
+    conflation = Conflation(a1, a2)
+    return conflation
+
 
 if __name__ == "__main__":
     """ run unit tests  """
-    import unittest
+    # import unittest
     # from tests import TestSeleniumScrapers
     # from tests import TestAggregator
     # from tests import TestPersonChunker
-    from tests import TestPersonScanner
-    unittest.main()
+    # from tests import TestPersonScanner
+    # unittest.main()
+
+    conflation = load_conflation()
+
+#    conflation.interweave()
+#    for p in conflation.conflation:
+#        for s in p:
+#            print(' '.join([w[0] for w in s]))
+
+
+
+
 
