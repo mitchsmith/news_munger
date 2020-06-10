@@ -791,29 +791,11 @@ class Conflation():
             raise
 
     def interweave(self):
-        counters = [0, 0]
-        disc = ['topic', 'comment']
-        disc_index = 0
-        doc_index = 0
-        if len(self.scanners[0].document_array) > len(self.scanners[1].document_array):
-            doc_index = 1
-        start = doc_index
-        for i, p in enumerate(self.scanners[start].document_array):
-            if i == 0:
-                self.conflation.append([p[0]])
-                # disc_index = 1
-            else:
-                if disc[disc_index] == 'topic':
-                    self.conflation.append([self.scanners[doc_index].document_array[i][0]])
-                    disc_index = 1
-                elif len(self.scanners[doc_index].document_array[i]) > 1:
-                    self.conflation[-1].append(self.scanners[doc_index].document_array[i][1:])
-                    disc_index = 0
-                else:
-                    self.conflation[-1].append(self.scanners[doc_index].document_array[i][0])
-                    disc_index = 0
-              
-            doc_index = (doc_index + 1) % 2
+        """ """
+        s1 = self.scanners[0]
+        s2 = self.scanners[1]
+
+
 
 def load_conflation():
     ag = Aggregator()
@@ -824,6 +806,17 @@ def load_conflation():
     religion = [h for h in ag.headlines if h[0] == 'Religion'][1][1]
     a2 = APArticle(religion)
     conflation = Conflation(a1, a2)
+    # Most commonly referenced name in the first article:
+    sorted(
+            [
+                conflation.scanners[0].locate_person_refs(p)
+                for p 
+                in conflation.scanners[0].people
+            ],
+            key=lambda person: sum([len(t) for t in person.values()])
+          )[-1]
+
+
     return conflation
 
 
