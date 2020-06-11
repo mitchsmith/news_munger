@@ -790,11 +790,41 @@ class Conflation():
             print(err)
             raise
 
-    def interweave(self):
-        """ """
-        s1 = self.scanners[0]
-        s2 = self.scanners[1]
 
+
+def interweave(conflation):
+    """ """
+    s1 = conflation.scanners[0]
+    s2 = conflation.scanners[1]
+    try:
+        t1 = s1.trees[:[
+                    re.sub(r'___*\.?', '____.', tree2text(t))
+                    for t in s1.trees
+                   ].index('____.')]
+    except ValueError:
+        t1 = s1.trees
+    try:
+        t2 = s2.trees[:[
+                    re.sub(r'___*\.?', '____.', tree2text(t))
+                    for t in s2.trees
+                   ].index('____.')]
+    except ValueError:
+        t2 = s2.trees
+    
+    combined = []
+    #len([t for t in s2.trees if not re.search(r'[A-Za-z]', tree2text(t))])
+    for index, tree in enumerate(
+            [t for t in t1 if re.search(r'[A-Za-z]', tree2text(t))]
+            ):
+        print(index)
+        if index % 2 == 0:
+            combined.append(tree)
+        else:
+            combined.append(
+                        list(reversed(
+                            [t for t in t2 if re.search(r'[A-Za-z]', tree2text(t))][index]
+                        )))
+    return combined
 
 
 def tree2text(tree):
@@ -842,7 +872,8 @@ if __name__ == "__main__":
     # from tests import TestPersonScanner
     # unittest.main()
 
-    conflation = load_conflation()
+    # conflation = load_conflation()
+    pass
 
 #    conflation.interweave()
 #    for p in conflation.conflation:
