@@ -797,6 +797,19 @@ class Conflation():
 
 
 
+def tree2text(tree):
+    tags = []
+    pnctfix = re.compile("(\s+)([?!:;.,])")
+    positions = [p for p in tree.treepositions() if p != () and len(p) == 1]
+    for p in positions:
+        if type(tree[p[0]]) == tuple:
+            tags.append(tree[p[0]][0])
+        else:
+            tags.append(tree2text(tree[p[0]]))
+    txt = pnctfix.sub(r"\2 ", " ".join(tags))
+    return re.sub(r"\s+$", "", re.sub(r"\s+", " ", txt))
+
+
 def load_conflation():
     ag = Aggregator()
     ag.restore_headlines()
