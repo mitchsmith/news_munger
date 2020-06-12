@@ -812,7 +812,6 @@ def interweave(conflation):
         t2 = s2.trees
     
     combined = []
-    #len([t for t in s2.trees if not re.search(r'[A-Za-z]', tree2text(t))])
     for index, tree in enumerate(
             [t for t in t1 if re.search(r'[A-Za-z]', tree2text(t))]
             ):
@@ -822,8 +821,8 @@ def interweave(conflation):
         else:
             combined.append(
                         list(reversed(
-                            [t for t in t2 if re.search(r'[A-Za-z]', tree2text(t))][index]
-                        )))
+                            [t for t in t2 if re.search(r'[A-Za-z]', tree2text(t))]
+                        ))[index])
     return combined
 
 
@@ -840,14 +839,14 @@ def tree2text(tree):
     return re.sub(r"\s+$", "", re.sub(r"\s+", " ", txt))
 
 
-def load_conflation():
-    ag = Aggregator()
-    ag.restore_headlines()
-    ag.restore_ap_topics()
-    sports = [h for h in ag.headlines if h[0] == 'Sports'][1][1]
-    a1 = APArticle(sports)
-    religion = [h for h in ag.headlines if h[0] == 'Religion'][1][1]
-    a2 = APArticle(religion)
+def load_conflation(ag):
+    #ag = Aggregator()
+    #ag.restore_headlines()
+    #ag.restore_ap_topics()
+    url_1 = [h for h in ag.headlines if h[0] == 'Sports'][1][1]
+    a1 = APArticle(url_1)
+    url_2 = [h for h in ag.headlines if h[0] == 'Sports'][1][2]
+    a2 = APArticle(url_2)
     conflation = Conflation(a1, a2)
     # Most commonly referenced name in the first article:
     sorted(
@@ -860,7 +859,11 @@ def load_conflation():
           )[-1]
 
 
-    return conflation
+    return conflation   
+
+
+
+
 
 
 if __name__ == "__main__":
