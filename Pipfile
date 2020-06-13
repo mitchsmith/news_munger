@@ -8,6 +8,8 @@ nltk = "*"
 "bs4" = "*"
 selenium = "*"
 bpython = "*"
+spacy = "*"
+spacy-lookups-data = "*"
 
 [dev-packages]
 
