@@ -47,6 +47,23 @@ def load_or_refresh_ag():
     return ag
 
 
+def interleave_sentences(doc1, doc2):
+    text = ""
+    newlines = re.compile(r"(\n+$)")
+    articles = sorted([doc1, doc2], key=lambda doc: len([s for s in doc.sents]))
+    for i, sentence in enumerate(articles[0].sents):
+        if i % 2 == 0:
+            text += sentence.text
+        else:
+            alttext = newlines.sub(
+                                   newlines.search(sentence.text).groups()[0],
+                                   [s for s in articles[1].sents][i].text
+                                  )
+            text += alttext
+        
+    return nlp(text)
+                
+
 ag = load_or_refresh_ag()
 
 nlp = spacy.load("en_core_web_sm")
