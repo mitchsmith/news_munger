@@ -3,6 +3,7 @@
 headlines.json
 topics.json
 *.bak
+tmp/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
