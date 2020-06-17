@@ -18,6 +18,73 @@ from spacy.matcher import PhraseMatcher
 from collections import deque
 from scrapers import Trends, Aggregator, APHeadlines, APArticle 
 
+class PersonScanner():
+    """ Location, labeling, and collation of named PERSON entities """
+
+    def __init__(self):
+        """ Instantiate a new PersonScanner instance and declare vars"""
+        
+        self._person_refs = []
+        self._people = []
+        self.document = None
+
+    def scan(self, document):
+        """ Locate PERSON entities and identify individuals
+        
+        Results are stored in self._person_refs and self._people
+
+        ARGS:
+            document (required) str or spacy.Doc instance
+        """
+        
+        if type(document) != Doc:
+            if type(document) == str:
+                self.document = nlp(document)
+            else:
+                raise TypeError("PersonScanner.scan requires str or Doc")
+        else:    
+            self.document = document
+
+        # variants = set(
+        #        [ent.text for ent in self.document.ents if ent.label_ == PERSON]
+        #        )
+        names = {}
+
+        for n in reversed(
+                    sorted([
+                            ent.text.split(' ')
+                            for ent
+                            in document.ents
+                            if ent.label_ == "PERSON"
+                           ], key=lambda lst: len(lst)
+                          )
+                        ):
+            if " ".join(n) not in names.keys():
+                found = False
+                print("{} not in names.keys.".format(" ".join(n)))
+                for k in names.keys():
+                    if re.search(" ".join(n), k):
+                        print("re match in name keys")
+                        names[k].append(" ".join(n))
+                        found = True
+                        break
+        if not found:
+             names[" ".join(n)] = [" ".join(n)]
+        
+        return names
+
+
+    @property
+    def person_refs(self):
+        return self._person_refs
+
+    @property
+    def people(self):
+        return self._people
+    
+    def __repr__(self):
+        return "<PersonScanner {}>".format(" ".join(self._person_refs.keys()))
+
 
 
 def load_or_refresh_ag():
@@ -63,6 +130,9 @@ def interleave_sentences(doc1, doc2):
         
     return nlp(text)
                 
+
+
+
 
 ag = load_or_refresh_ag()
 
