@@ -180,7 +180,7 @@ class PersonScanner():
 
 
 def load_or_refresh_ag():
-    cached = datetime.date.today().strftime("tmp/ag_%Y%m%d.pkl")
+    cached = datetime.datetime.today().strftime("tmp/ag_%Y%m%d.pkl")
     if os.path.isfile(cached):
         with open(cached, "rb") as pkl:
             ag = pickle.load(pkl)

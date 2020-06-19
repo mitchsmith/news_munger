@@ -30,13 +30,18 @@ class WikiPerson():
         self.fictional = False
         self.ambiguous = False
         self.alt_url = None
+        self.born = None
         self.bio = None
         
         if html.getcode() == 200:
             self.soup = BeautifulSoup(html, 'html.parser')
             for p in self.soup.findAll('p'):
-                if re.search(r"\(born", p.text):
+                bd = re.search(r"\([^\)]*(born )([\w\s]+;)?\s*(.+?\d{4})", p.text)
+                if bd:
                     self.found = True
+                    if bd.groups()[1]:
+                        self.born = bd.groups()[1][:-1]
+                    self.birth_date = bd.groups()[2]
                     self.bio = p
                     break
                 elif re.search(r"fictional character", p.text):
@@ -64,12 +69,23 @@ class WikiPerson():
 
     @property
     def gender(self):
-        if re.search(r"She (is)|(was)", self.bio.text):
+        if re.search(r"\s[Ss]he\s|\s[Hh]er\s", self.bio.text):
             return "Female"
-        elif re.search(r"He (is)|(was)", self.bio.text):
+        elif re.search(r"\s+[Hh]e\s|\s[Hh]is\s", self.bio.text):
             return "Male"
         else:
             return "Unspecified"
+
+    @property
+    def age(self):
+        if self.found and self.birth_date:
+            age = datetime.datetime.now() - datetime.datetime.strptime(
+                    self.birth_date,
+                    "%B %d, %Y"
+                    )
+            return int( age.days // 365.25)
+
+        return "Unknown"
 
 
 
