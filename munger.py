@@ -207,6 +207,9 @@ def load_or_refresh_ag():
 
 
 def interleave_sentences(doc1, doc2):
+    
+    """ """
+    
     text = ""
     newlines = re.compile(r"(\n+$)")
     articles = sorted([doc1, doc2], key=lambda doc: len([s for s in doc.sents]))
@@ -223,7 +226,12 @@ def interleave_sentences(doc1, doc2):
     return nlp(text)
                 
 
+def objectify(document):
 
+    """ Swap subjects with direct objects """
+
+    # stub
+    pass
 
 
 ag = load_or_refresh_ag()
