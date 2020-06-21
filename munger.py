@@ -228,10 +228,69 @@ def interleave_sentences(doc1, doc2):
 
 def objectify(document):
 
-    """ Swap subjects with direct objects """
+    """ Swap subjects with direct objects
+    
+    TODO: Rewrite this spaCily
+    """
+
+    for s in document.sents:
+        new_text = ""
+        # find the noun chunks
+        nplist = [n for n in s.noun_chunks]
+        
+        # find the subject
+        nsubj = [n for n in nplist if n.root.dep_ =='nsubj'][0]
+        # find the subject's direct object
+        dobj = [n for n in nplist if n.root.dep_ =='dobj' and n.root.head == nsubj.root.head][0]
+        # get sentence text
+        text = s.orth_
+        # replacement string for new subject
+        replacement_s = ''.join(
+                [t.text_with_ws for t in dobj if t.dep_ not in ['poss', 'det']]
+                )
+        print("s {}".format(replacement_s))
+        # replacement string for new D.O.
+        replacement_o = ''.join(
+                [t.text_with_ws for t in nsubj if t.dep_ not in ['poss', 'det']]
+                )
+        print("o {}".format(replacement_o))
+        # temp replacement (shape of original subject)
+        tmp_replace = replacement_o
+        tmp_replace = ''.join([re.sub(
+                 t.orth_, t.shape_, tmp_replace
+               ) for t in nsubj if t.dep_ not in ['poss', 'det']])
+        print("temp {}".format(tmp_replace))
+        # replace orig subj with tmp_replace
+        text = re.sub(replacement_o, tmp_replace, text)
+        # replace orig D.O. with new subj
+        text = re.sub(replacement_s, replacement_o, text)
+        # replace tmp subj with new subj
+        text = re.sub(tmp_replace, replacement_s, text)
+        new_text += text
+    return new_text
+
+
+
+
 
     # stub
     pass
+
+
+def extract_context(sentence):
+    
+    """ """
+
+    # stub
+    pass
+
+
+def traverse(node):
+    if node.n_lefts + node.n_rights > 0:
+        return [(node.i, node), [traverse(child) for child in node.children]]
+    else:
+        return (node.i, node)
+
 
 
 ag = load_or_refresh_ag()
