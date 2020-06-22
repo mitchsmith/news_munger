@@ -14,7 +14,7 @@ import pickle
 import spacy
 from spacy.lang.en import English
 from spacy.tokens import Doc, Span, Token
-from spacy.matcher import PhraseMatcher
+from spacy.matcher import Matcher, PhraseMatcher
 from collections import deque
 from scrapersI import Trends, Aggregator, APHeadlines, APArticle
 from scrapersII import WikiPerson
@@ -196,6 +196,15 @@ def load_or_refresh_ag():
             if len(ag.stories) >= 2:
                 break
 
+        for url in [h[1] for h in ag.headlines if h[0] == 'Politics']:
+            try:
+                ag.fetch_ap_article(url)
+            except:
+                continue
+            if len(ag.stories) >= 4:
+                break
+
+
         for story in ag.stories:
             # ditch unpicklable
             story.driver = None
@@ -232,16 +241,32 @@ def objectify(document):
     
     TODO: Rewrite this spaCily
     """
+    if type(document) == Doc:
+        doc = document
+    elif type(document) == Span:
+        doc = document.as_doc()
+    elif type(document) == str:
+        doc = nlp(document)
+    else:
+        raise TypeError("The document must be of type str, Doc, or Span.")
 
-    for s in document.sents:
+    for s in doc.sents:
         new_text = ""
         # find the noun chunks
         nplist = [n for n in s.noun_chunks]
         
         # find the subject
-        nsubj = [n for n in nplist if n.root.dep_ =='nsubj'][0]
+        nsubj = [n for n in nplist if n.root.dep_ =='nsubj']
+        if nsubj:
+            nsubj = nsubj[0]
         # find the subject's direct object
-        dobj = [n for n in nplist if n.root.dep_ =='dobj' and n.root.head == nsubj.root.head][0]
+        dobj = [
+                n for n in nplist
+                if n.root.dep_ =='dobj'
+                and n.root.head == nsubj.root.head
+               ]
+        if dobj:
+            dobj = dobj[0]
         # get sentence text
         text = s.orth_
         # replacement string for new subject
@@ -268,13 +293,6 @@ def objectify(document):
         text = re.sub(tmp_replace, replacement_s, text)
         new_text += text
     return new_text
-
-
-
-
-
-    # stub
-    pass
 
 
 def extract_context(sentence):
