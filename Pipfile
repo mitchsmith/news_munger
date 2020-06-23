@@ -10,6 +10,7 @@ selenium = "*"
 bpython = "*"
 spacy = "*"
 spacy-lookups-data = "*"
+lemminflect = "*"
 
 [dev-packages]
 

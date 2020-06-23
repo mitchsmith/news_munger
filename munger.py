@@ -12,6 +12,7 @@ import time
 import json
 import pickle
 import spacy
+import lemminflect
 from spacy.lang.en import English
 from spacy.tokens import Doc, Span, Token
 from spacy.matcher import Matcher, PhraseMatcher
@@ -291,6 +292,7 @@ def objectify(document):
         text = re.sub(replacement_s, replacement_o, text)
         # replace tmp subj with new subj
         text = re.sub(tmp_replace, replacement_s, text)
+
         new_text += text
     return new_text
 
