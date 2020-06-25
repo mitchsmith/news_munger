@@ -217,7 +217,8 @@ class Trends(HeavyScraper):
 
 class APHeadlines(HeavyScraper):
     """ Scrape AP News Topics and optionally retrieve headlines by topic  """
-
+    
+    topic_list = []
     url = "https://apnews.com/"
     def __init__(self, topic_id=0):
         """ Fetch topics and immediatly close the marionette driver.
@@ -227,7 +228,6 @@ class APHeadlines(HeavyScraper):
         """
         super().__init__(self.url)
         self.driver.get(self.url)
-        self.topic_list = []
         self.headlines = []
         self.ap_nav = self.driver.find_elements_by_class_name('nav-action')
         print("Got AP Nav")
@@ -263,8 +263,9 @@ class APHeadlines(HeavyScraper):
                     href = story.find_element_by_tag_name('a').get_attribute('href')
                     self.headlines.append((self.driver.title, href, txt))
                 except:
+                    print("Failed to load headline")
                     pass
-
+        
         self.driver.close()
 
     def __repr__(self):

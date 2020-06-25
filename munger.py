@@ -297,20 +297,71 @@ def objectify(document):
     return new_text
 
 
-def extract_context(sentence):
+def strip_bottoms(documents):
+
+    """  """
+    stripped = []
+
+    for i, d in enumerate(docs):
+        try:
+            end = [s.root.i for s in d.sents if s.root.orth_ == "_"][0]
+        except IndexError:
+            end = -1
+        stripped.append(d[:end].as_doci())
+
+    return stripped
+
+
+def swap_main_verbs(doc1, doc2):
     
     """ """
+    docs = strip_bottoms([doc1, doc2])
+    verb_sets = []
+    new_texts = ["", ""]
+    for d in docs:
+        verb_sets.append(
+                        set([
+                            s.root.lemma_
+                            for s 
+                            in d.sents 
+                            if s.root.pos_ == "VERB"
+                        ])
+                    )
 
-    # stub
-    pass
+    for i, d in enumerate(docs):
+        patterns = list(verb_sets[i] - verb_sets[(i + 1) % 2])
+        replacements = list(verb_sets[(i + 1) % 2] - verb_sets[i])
+        for s in d.sents:
+            if s.root.lemma_ in patterns:
+                t = s.text_with_ws
+                p = s.root.orth_
+                r = [
+                    x.root._.inflect(s.root.tag_)
+                    for x
+                    in docs[(i + 1) % 2].sents
+                    if x.root.lemma_ == replacements[
+                        patterns.index(s.root.lemma_) % len(replacements)
+                        ]
+                    ][0]
+                text = re.sub(p, r, t)
+                new_texts[i % 2] += text
+            else:
+                new_texts[i % 2] += s.text_with_ws
+    
+    return new_texts
+                        
+    
+    #repl = verb_sets[0] - verb_sets[1]
 
+        
+
+    
 
 def traverse(node):
     if node.n_lefts + node.n_rights > 0:
         return [(node.i, node), [traverse(child) for child in node.children]]
     else:
         return (node.i, node)
-
 
 
 ag = load_or_refresh_ag()
