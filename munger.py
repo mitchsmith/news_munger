@@ -302,12 +302,12 @@ def strip_bottoms(documents):
     """  """
     stripped = []
 
-    for i, d in enumerate(docs):
+    for i, d in enumerate(documents):
         try:
             end = [s.root.i for s in d.sents if s.root.orth_ == "_"][0]
         except IndexError:
             end = -1
-        stripped.append(d[:end].as_doci())
+        stripped.append(d[:end].as_doc())
 
     return stripped
 
@@ -351,7 +351,42 @@ def swap_main_verbs(doc1, doc2):
     return new_texts
                         
     
-    #repl = verb_sets[0] - verb_sets[1]
+def swap_ents(ent_label, *args):
+
+    """ """
+
+    stripped = strip_bottoms(args)
+    ent_sets = []
+    new_texts = []
+    
+    for d in stripped:
+        s = [" ".join([
+                      t.text
+                      for t
+                      in e
+                      if t.dep_ != "det"]
+                    )
+                    for e
+                    in d.ents
+                    if e.label_ == ent_label
+            ]
+        ent_sets.append(list(set(s) - {'AP', 'Associated Press'}))
+
+    for i, d in enumerate(stripped):
+        text = d.text_with_ws
+        replacements = set()
+        
+        for j, s in enumerate(ent_sets):
+            if j != i:
+                replacements = replacements.union(set(s))
+
+        for j, pattern in enumerate(ent_sets[i]):
+            text = re.sub(pattern, list(replacements)[j % len(replacements)], text)
+
+        new_texts.append(text)
+    
+    return new_texts
+
 
         
 
