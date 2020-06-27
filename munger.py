@@ -20,7 +20,7 @@ from collections import deque
 from scrapersI import Trends, Aggregator, APHeadlines, APArticle
 from scrapersII import WikiPerson
 
-nlp = spacy.load("en_core_web_sm")
+nlp = spacy.load("en_core_web_md")
 
 try:
     Doc.set_extension("title", default=None)
@@ -388,10 +388,94 @@ def swap_ents(ent_label, *args):
     return new_texts
 
 
-        
+def collect_verbs(documents):
+
+    """Create lists of unique verbs in documents arranged by valence.  """
+
+    allverbs = []
+    for doc in documents:
+        allverbs.extend(
+                    sorted(
+                        set(
+                            [
+                                (v.lemma_, len(
+                                    [
+                                        t.dep_
+                                        for t
+                                        in v.children
+                                        if t.dep_
+                                        in ['nsubj','dobj','xcomp', 'prep']
+                                    ]
+                                )
+                            )
+                            for v
+                            in doc
+                            if v.pos_ == "VERB"
+                            and v.is_alpha
+                            ]
+                           ), key=lambda tup: tup[1]
+                         )
+                      )
+    verbs = [[],[],[]]
+    for v in set(allverbs):
+        try:
+            verbs[v[1]].append(nlp(v[0])[0])
+        except IndexError:
+            verbs[2].append(nlp(v[0])[0])
+    return verbs
+
+def scramble_verbs(documents, ranked_verbs=None):
+
+    """   """
+
+    new_texts = []
+
+    if ranked_verbs:
+        bags = ranked_verbs
+    else:
+        bags = collect_verbs(documents)
+    
+    for i, doc in enumerate(strip_bottoms(documents)):
+        new_texts.append(doc.text_with_ws)
+
+        for token in doc:
+            if token.pos_ == "VERB" and token.is_alpha:
+                valence = len([
+                                t.dep_
+                                for t
+                                in token.children
+                                if t.dep_
+                                in ['nsubj','dobj','xcomp', 'prep']
+                              ])
+                if valence > 2:
+                    valence = 2
+                p = token.orth_
+                r = [
+                        v._.inflect(token.tag_)
+                        for v
+                        in sorted(
+                                    [
+                                        tok
+                                        for tok
+                                        in bags[valence]
+                                        if tok.lemma_ != token.lemma_
+                                    ],
+                                    key=lambda s: s.similarity(token)
+                                 )
+                    ][0]
+
+                if token.is_title:
+                    r = r.title()
+                
+                new_texts[i] = re.sub(p, r, new_texts[i])
+    
+    return new_texts
+
+
+
+
 
     
-
 def traverse(node):
     if node.n_lefts + node.n_rights > 0:
         return [(node.i, node), [traverse(child) for child in node.children]]
