@@ -417,12 +417,33 @@ def collect_verbs(documents):
                          )
                       )
     verbs = [[],[],[]]
+    
     for v in set(allverbs):
-        try:
-            verbs[v[1]].append(nlp(v[0])[0])
-        except IndexError:
-            verbs[2].append(nlp(v[0])[0])
+         try:
+             verbs[v[1]].append(nlp(v[0])[0])
+         except IndexError:
+             verbs[2].append(nlp(v[0])[0])
     return verbs
+
+
+def collect_verb_lemmas(documents):
+    
+    """Create single list of unique verb lemmas  """
+    
+    lemmas = []
+    for doc in documents:
+        lemmas.extend(
+                        [
+                            v.lemma_
+                            for v
+                            in doc
+                            if v.pos_ == "VERB"
+                            and v.is_alpha
+                        ]
+                    )
+    return [nlp(v)[0] for v in sorted(set(lemmas))]
+
+
 
 def scramble_verbs(documents, ranked_verbs=None):
 
@@ -440,15 +461,15 @@ def scramble_verbs(documents, ranked_verbs=None):
 
         for token in doc:
             if token.pos_ == "VERB" and token.is_alpha:
-                valence = len([
-                                t.dep_
-                                for t
-                                in token.children
-                                if t.dep_
-                                in ['nsubj','dobj','xcomp', 'prep']
-                              ])
-                if valence > 2:
-                    valence = 2
+            #    valence = len([
+            #                    t.dep_
+            #                    for t
+            #                    in token.children
+            #                    if t.dep_
+            #                    in ['nsubj','dobj','xcomp', 'prep']
+            #                  ])
+            #    if valence > 2:
+            #        valence = 2
                 p = token.orth_
                 r = [
                         v._.inflect(token.tag_)
@@ -457,12 +478,13 @@ def scramble_verbs(documents, ranked_verbs=None):
                                     [
                                         tok
                                         for tok
-                                        in bags[valence]
+                                        # in bags[valence]
+                                        in bags
                                         if tok.lemma_ != token.lemma_
                                     ],
                                     key=lambda s: s.similarity(token)
                                  )
-                    ][0]
+                    ][-3]
 
                 if token.is_title:
                     r = r.title()
@@ -472,8 +494,33 @@ def scramble_verbs(documents, ranked_verbs=None):
     return new_texts
 
 
+def scramble_verbs_II(documents):
+    
+    """ """
+    
+    stripped = strip_bottoms(documents)
+    verbs = collect_verb_lemmas(stripped)
+    texts = []
+    for i, d in enumerate(stripped):
+        doctext = []
+        for s in d.sents:
+            s_text = s.text_with_ws
+            for t in s:
+                if t.pos_ == "VERB" and t.is_alpha:
+                    p = r"( |^)({})(\W|$)".format(t.orth_)
+                    choices = sorted(
+                                    [tok for tok in verbs if tok.lemma_ != t.lemma_],
+                                    key=lambda s: s.similarity(t)
+                                    )
+                    rpl = choices[-1]._.inflect(t.tag_)
+                    if t.is_title:
+                        rpl = rpl.title()
+                    s_text = re.sub(p, r"\1{}\3".format(rpl), s_text)
 
-
+            doctext.append(s_text)
+                    
+        texts.append("".join(doctext))
+    return texts
 
     
 def traverse(node):
