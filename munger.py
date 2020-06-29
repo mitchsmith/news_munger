@@ -360,11 +360,12 @@ def swap_ents(ent_label, *args):
     new_texts = []
     
     for d in stripped:
-        s = [" ".join([
-                      t.text
+        s = ["".join([
+                      t.text_with_ws
                       for t
                       in e
-                      if t.dep_ != "det"]
+                      ]
+                      # if t.dep_ != "det"]
                     )
                     for e
                     in d.ents
@@ -381,8 +382,13 @@ def swap_ents(ent_label, *args):
                 replacements = replacements.union(set(s))
 
         for j, pattern in enumerate(ent_sets[i]):
-            text = re.sub(pattern, list(replacements)[j % len(replacements)], text)
-
+            text = re.sub(
+                    pattern,
+                    "{} ".format(
+                        list(replacements)[j % len(replacements)]
+                        ),
+                    text
+                    )
         new_texts.append(text)
     
     return new_texts
@@ -528,6 +534,25 @@ def traverse(node):
         return [(node.i, node), [traverse(child) for child in node.children]]
     else:
         return (node.i, node)
+
+
+def suuffle_and_merge(documents):
+    
+    """   """
+
+    base = swap_ents("ORG", documents[0], documents[-1])
+    munged = []
+    for text in base:
+        re.sub(r" +", " ", text, re.DOTALL)
+        doc = nlp(text)
+        munged.append(doc)
+        print(len(list(doc.sents)))
+
+    combined = [s.text_with_ws for s in munged[0].sents][:14]
+    combined.extend([s.text_with_ws for s in munged[1].sents][-5:])
+
+    return nlp("".join(combined))
+
 
 
 ag = load_or_refresh_ag()
