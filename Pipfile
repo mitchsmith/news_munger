@@ -11,6 +11,7 @@ bpython = "*"
 spacy = "*"
 spacy-lookups-data = "*"
 lemminflect = "*"
+google-cloud-texttospeech = "*"
 
 [dev-packages]
 
