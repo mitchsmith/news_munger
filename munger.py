@@ -348,9 +348,55 @@ def swap_main_verbs(doc1, doc2):
             else:
                 new_texts[i % 2] += s.text_with_ws
     
-    return new_texts
-                        
     
+
+    return new_texts
+
+
+def swap_sent_ents(ent_label, *args):
+
+    """ """
+
+    stripped = strip_bottoms(args)
+    ent_sets = []
+    munged_texts = []
+
+    for d in stripped:
+        span_texts = ["".join([
+                                t.text_with_ws
+                                for t
+                                in e
+                                if t.dep_ != "det"
+                              ]
+                             )
+                        for e
+                        in d.ents
+                        if e.label_ == ent_label
+                     ]
+        ent_sets.append(list(set(span_texts) - {'AP', 'Associated Press'}))
+    
+    for i, d in enumerate(stripped):
+        munged_sents = []
+        for j, s in enumerate(d.sents):
+            text = s.text_with_ws
+            text = re.sub(r"^[A-Z]+ +\(AP\) — ", "", text)
+            ents = [e for e in s.ents if e.label_ == ent_label]
+            if len(ents) > 0:
+                for k, pattern in enumerate(ent_sets[i]):
+                    replacement = ent_sets[(i + 1) % 2][k % len(ent_sets[(i + 1) % 2])]
+                    replacement = re.sub(" ?$", " ", replacement)
+                    text = re.sub(pattern, replacement, text)
+                
+                munged_sents.append((j, text))
+
+        munged = "".join([s[1] for s in sorted(munged_sents, key=lambda s: s[0])])
+        munged = re.sub(r" +"," ", munged)
+        munged = re.sub(r" (\W|$)", "", munged)
+        munged_texts.append(munged)
+    
+    return munged_texts
+
+
 def swap_ents(ent_label, *args):
 
     """ """
@@ -536,7 +582,7 @@ def traverse(node):
         return (node.i, node)
 
 
-def suuffle_and_merge(documents):
+def shuffle_and_merge(documents):
     
     """   """
 
