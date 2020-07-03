@@ -24,7 +24,7 @@ def list_voices(language_code=None):
               sep=' | ')
         
         
-def text_to_wav(voice_name, text):
+def text_to_mp3(voice_name, text):
     language_code = '-'.join(voice_name.split('-')[:2])
     text_input = tts.SynthesisInput(text=text)
     voice_params = tts.VoiceSelectionParams(

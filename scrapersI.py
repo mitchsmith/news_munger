@@ -23,6 +23,7 @@ from nltk.chunk.util import conlltags2tree
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from collections import deque
+from helpers import kill_firefox
 
 FEMININE_TITLES = (
         'Chairwoman',
@@ -392,6 +393,8 @@ class Aggregator():
                 self._headlines.extend(t.headlines)
             except Exception as ex:
                 print(ex)
+                kill_firefox()
+                continue
 
         return self._headlines
 
