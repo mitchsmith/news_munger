@@ -193,13 +193,19 @@ def load_or_refresh_ag(topic_list=['Sports', 'Politics']):
         ag.collect_ap_headlines()
         
         for top in topic_list:
+            failed = 0
             stopat = len(ag.stories) + 2
             for url in [h[1] for h in ag.headlines if h[0] == top]:
                 try:
                     ag.fetch_ap_article(url)
                 except:
                     kill_firefox()
-                    continue
+                    time.sleep(3)
+                    failed += 1
+                    if failed < 4:
+                        continue
+                    else:
+                        break
                 if len(ag.stories) >= stopat:
                     break
 

@@ -394,6 +394,7 @@ class Aggregator():
             except Exception as ex:
                 print(ex)
                 kill_firefox()
+                time.sleep(3)
                 continue
 
         return self._headlines
@@ -421,11 +422,14 @@ class Aggregator():
         ARGS: url
         """
         
-        try:
-            article = APArticle(url)
-            self._stories.append(article)
-        except Exception as ex:
-            print("Unable to retrieve article", ex)
+        if re.search(r"apnews", url):
+            try:
+                article = APArticle(url)
+                self._stories.append(article)
+            except Exception as ex:
+                kill_firefox()
+                time.sleep(3)
+                print("Unable to retrieve article", ex)
 
     @property
     def topics(self):
