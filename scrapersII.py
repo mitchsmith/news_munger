@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 """ This module provides a collection of utilities for creating a madlibs-
 style digest of news headlines and stories from a variety of feeds and 
@@ -11,8 +12,7 @@ import time
 import datetime
 import json
 import requests
-import urllib.request
-from urllib.request import urlopen
+#import urllib3
 from bs4 import BeautifulSoup
 from collections import deque
 
@@ -20,12 +20,19 @@ class WikiPerson():
     
     """   """
     
-    def __init__(self, url):
-        
+    def __init__(self, name_or_url):
+
         """   """
-        
-        html = urlopen(url)
-        self.url = url
+
+        print("initializing with".format(name_or_url))
+        if re.search(r"^http", name_or_url):      
+            self.url = name_or_url
+        else:
+            self.url = "https://wikipedia.org/wiki/{}".format(
+                            re.sub(r"\s+", "_", name_or_url)
+                            )
+        # html = PoolManager()
+        request = requests.get(self.url)
         self.found = False
         self.fictional = False
         self.ambiguous = False
@@ -33,8 +40,8 @@ class WikiPerson():
         self.born = None
         self.bio = None
         
-        if html.getcode() == 200:
-            self.soup = BeautifulSoup(html, 'html.parser')
+        if request.status_code == 200:
+            self.soup = BeautifulSoup(request.text, 'html.parser')
             for p in self.soup.findAll('p'):
                 bd = re.search(r"\([^\)]*(born )([\w\s]+;)?\s*(.+?\d{4})", p.text)
                 if bd:

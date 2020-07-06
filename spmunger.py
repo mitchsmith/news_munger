@@ -19,10 +19,11 @@ from spacy.tokens import Doc, Span, Token
 from spacy.matcher import Matcher, PhraseMatcher
 from collections import deque
 from scrapersI import Trends, Aggregator, APHeadlines, APArticle
+from scrapersI import GENERIC_TITLES, FEMININE_TITLES, MASCULINE_TITLES
 from scrapersII import WikiPerson
 from gtts import  list_voices, text_to_mp3
 from helpers import kill_firefox
-from munger import load_or_refresh_ag
+from munger import load_or_refresh_ag 
 
 nlp = spacy.load("en_core_web_md")
 
@@ -51,13 +52,12 @@ class Person():
         self._wikidata = None
 
     def aka_include(self, alias_list):
+        self._aka.extend(alias_list)
         self._aka = sorted(
-                            set(
-                                self._aka.extend(alias_list)
-                            ),
+                            set(self._aka),
                             key=lambda n: len(n.split(" ")),
                             reverse = True
-                            )
+                          )
     
     def merge_info(info):
         self._info = info
@@ -73,6 +73,11 @@ class Person():
     @property
     def wikidata(self):
         return self._wikidata
+    
+    @wikidata.setter
+    def wikidata(self, value):
+        if type(value) == WikiPerson:
+            self._wikidata = value
 
     def __repr__(self):
         return "<Person: {}>".format(self.name)
@@ -100,73 +105,82 @@ class GeoPoliticalEntity():
         return "<GeoPoliticalEntity: {}>".format(self.name)
 
 
-class PersonScanner():
-    """ Location, labeling, and collation of named PERSON entities """
+class Scanner():
 
+    """ """
     def __init__(self):
-        """ Instantiate a new PersonScanner instance and declare vars"""
-        self._people = {}
         self._document = None
+        self._entity_type = "PERSON"
 
     def scan(self, document):
-        """ Locate PERSON entities and identify individuals
+        
+        """ Locate entities of a given entity type
         
         ARGS:
             document (required) str or spacy.Doc instance
 
-        RETURNS: A spacy.Doc instance with _.people attribute containing
-            a dict of all variants of each person's name, with the longest
-            form of each name as key.
+        RETURNS: A dict of all variants of each entity's name, with
+            the longest form of each name as key.
         """
         
         if type(document) != Doc:
             if type(document) == str:
                 self._document = nlp(document)
             else:
-                raise TypeError("PersonScanner.scan requires str or Doc")
-        else:    
+                raise TypeError("Scanner.scan requires str or Doc")
+        else:
             self._document = document
         
-        self._people = {}
+        self._entities = {}
 
         for n in reversed(
                     sorted([
                             ent.text.split(' ')
                             for ent
                             in self._document.ents
-                            if ent.label_ == "PERSON"
+                            if ent.label_ == self._entity_type
                            ], key=lambda lst: len(lst)
                           )
                         ):
-            if " ".join(n) not in self._people.keys():
+            if " ".join(n) not in self._entities.keys():
                 found = False
-                print("{} not in self._people.keys.".format(" ".join(n)))
-                for k in self._people.keys():
+                print("{} not in self._entities.keys.".format(" ".join(n)))
+                for k in self._entities.keys():
                     if re.search(" ".join(n), k):
                         print("re match in name keys")
-                        self._people[k].append(" ".join(n))
+                        self._entities[k].append(" ".join(n))
                         found = True
                         break
             if not found:
-                self._people[" ".join(n)] = [" ".join(n)]
+                self._entities[" ".join(n)] = [" ".join(n)]
         
-        self._document._.people = self._people
-        return self._people
+        if self._entity_type == "PERSON":
+            self._document._.people = self._entities
+        
+        return self._entities
 
+
+
+class PersonScanner(Scanner):
+
+    """ Location, labeling, and collation of named PERSON entities """
+
+    def __init__(self):
+        super().__init__()
 
     def lookup_person(self, person_name):
         
         """Retrieve available person info from wikipedia
 
-        ARGS: name (required) str
+        ARGS: person_name (required) str
 
         RETURNS: WikiPerson instance
         
         """
         self.fullname = person_name
-        query_term = self.fullname.replace(" ", "_")
-        url = "https://en.wikipedia.org/w/index.php?search=" + query_term
-        wikiperson = WikiPerson(url)
+        # query_term = self.fullname.replace(" ", "_")
+        #url = "https://en.wikipedia.org/w/index.php?search=" + query_term
+        wikiperson = WikiPerson(person_name)
         return wikiperson
 
     def get_person_info(self, person):
@@ -242,10 +256,10 @@ class PersonScanner():
 
     @property
     def people(self):
-        return self._people
+        return self._entities
     
     def __repr__(self):
-        return "<PersonScanner {}>".format(" ".join(self._people.keys()))
+        return "<PersonScanner {}>".format(" ".join(self._entities.keys()))
 
 
 
@@ -259,24 +273,33 @@ class DocumentCatalog():
             raise TypeError
         self.documents = document_list
         self.created_at = datetime.datetime.now().isoformat()
-        self.scanner = PersonScanner()
         self.people = []
+        self.orgs = []
 
     def collect_people(self):
+        scanner = PersonScanner()
         for i, d in enumerate(self.documents):
-            print(type(d))
-            doc_people = self.scanner.scan(d)
+            doc_people = scanner.scan(d)
             for full_name in doc_people.keys():
+                print(full_name)
+                addme = True
                 try:
-                    person =[p.name for p in self.people].index(full_name)
+                    idx = [p.name for p in self.people].index(full_name)
+                    if idx:
+                        person = self.people[idx]
+                        addme = False
                 except ValueError:
                     person = Person(full_name)
-                    person.wikidata = self.scanner.lookup_person(full_name)
+                    person.wikidata = scanner.lookup_person(full_name)
                 person.aka_include(sorted(set(doc_people[full_name])))
-                person.merge_info(self.scanner.get_person_info(full_name))
+                # person.merge_info(scanner.get_person_info(full_name))
                 person.appears_in.append(i)
-                self.people.append(person)
+                if addme:
+                    self.people.append(person)
 
+    def collect_orgs(self):
+        for i, d in enumerate(self.documents):
+            pass
 
 
     def __repr__(self):
