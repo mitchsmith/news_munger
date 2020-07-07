@@ -20,7 +20,7 @@ from spacy.matcher import Matcher, PhraseMatcher
 from collections import deque
 from scrapersI import Trends, Aggregator, APHeadlines, APArticle
 from scrapersI import GENERIC_TITLES, FEMININE_TITLES, MASCULINE_TITLES
-from scrapersII import WikiPerson
+from scrapersII import WikiPerson, WikiOrg
 from gtts import  list_voices, text_to_mp3
 from helpers import kill_firefox
 from munger import load_or_refresh_ag 
@@ -89,6 +89,39 @@ class Organization():
 
     def __init__(self, name=None, *args, **kwargs):
         self.name = name
+        self.appears_in = []
+        self._aka = []
+        self._info = None
+        self._wikidata = None
+
+    def aka_include(self, alias_list):
+        self._aka.extend(alias_list)
+        self._aka = sorted(
+                            set(self._aka),
+                            key=lambda n: len(n.split(" ")),
+                            reverse = True
+                          )
+    
+    def merge_info(info):
+        self._info = info
+
+    @property
+    def aka(self):
+        return self._aka
+
+    @property
+    def info(self):
+        return self._info
+
+    @property
+    def wikidata(self):
+        return self._wikidata
+    
+    @wikidata.setter
+    def wikidata(self, value):
+        if type(value) == WikiOrg:
+            self._wikidata = value
+
 
     def __repr__(self):
         return "<Organization: {}>".format(self.name)
@@ -108,6 +141,7 @@ class GeoPoliticalEntity():
 class Scanner():
 
     """ """
+    
     def __init__(self):
         self._document = None
         self._entity_type = "PERSON"
@@ -158,6 +192,14 @@ class Scanner():
             self._document._.people = self._entities
         
         return self._entities
+
+    @property
+    def document(self):
+        return self._document
+
+    def __repr__(self):
+        return "<Scanner {}>".format(" ".join(self._entities.keys()))
+
 
 
 
@@ -251,10 +293,6 @@ class PersonScanner(Scanner):
 
 
     @property
-    def document(self):
-        return self._document
-
-    @property
     def people(self):
         return self._entities
     
@@ -262,7 +300,22 @@ class PersonScanner(Scanner):
         return "<PersonScanner {}>".format(" ".join(self._entities.keys()))
 
 
+class OrgScanner(Scanner):
+    
+    """ """
+    
+    def __init__(self):
+        super().__init__()
+        self._entity_type = "ORG"
 
+    @property
+    def orgs(self):
+        return self._entities
+ 
+    def __repr__(self):
+        return "<OrgScanner {}>".format(" ".join(self._entities.keys()))
+    
+   
 
 class DocumentCatalog():
     
@@ -298,8 +351,23 @@ class DocumentCatalog():
                     self.people.append(person)
 
     def collect_orgs(self):
+        scanner = OrgScanner()
         for i, d in enumerate(self.documents):
-            pass
+            doc_orgs = scanner.scan(d)
+            for org_name in doc_orgs.keys():
+                addme = True
+                try:
+                    idx = [o.name for o in self.orgs].index(org_name)
+                    if idx:
+                        org = self.orgs[idx]
+                        addme = False
+                except ValueError:
+                    org = Organization(org_name)
+                    org.wikidata = WikiOrg(org_name)
+                org.aka_include(sorted(set(doc_orgs[org_name])))
+                org.appears_in.append(i)
+                if addme:
+                    self.orgs.append(org)
 
 
     def __repr__(self):

@@ -12,7 +12,6 @@ import time
 import datetime
 import json
 import requests
-#import urllib3
 from bs4 import BeautifulSoup
 from collections import deque
 
@@ -31,7 +30,6 @@ class WikiPerson():
             self.url = "https://wikipedia.org/wiki/{}".format(
                             re.sub(r"\s+", "_", name_or_url)
                             )
-        # html = PoolManager()
         request = requests.get(self.url)
         self.found = False
         self.fictional = False
@@ -94,5 +92,46 @@ class WikiPerson():
 
         return "Unknown"
 
+
+class WikiOrg():
+    
+    """   """
+    
+    def __init__(self, name_or_url):
+
+        """   """
+
+        print("Initializing with".format(name_or_url))
+        if re.search(r"^http", name_or_url):      
+            self.url = name_or_url
+        else:
+            self.url = "https://wikipedia.org/wiki/{}".format(
+                            re.sub(r"\s+", "_", name_or_url)
+                            )
+        request = requests.get(self.url)
+        self.canonical_name = None
+        self.abbr = None
+        self.found = False
+        self.fictional = False
+        self.ambiguous = False
+        self.alt_url = None
+        self.description = None
+        
+        if request.status_code == 200:
+            self.soup = BeautifulSoup(request.text, 'html.parser')
+            self.canonical_name = self.soup.find('h1').text
+            for i, p in enumerate(self.soup.findAll('p')):
+                bold = [b.text for b in p.findAll('b')]
+                if self.canonical_name and self.canonical_name in bold:
+                    self.found = True
+                    self.description = p
+                    try:
+                        self.abbr = bold[1]
+                    except:
+                        pass
+                    break
+                    
+    def __repr__(self):
+        return "<WikiOrg {}>".format(self.canonical_name)
 
 
