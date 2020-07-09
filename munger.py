@@ -184,7 +184,8 @@ class PersonScanner():
 
 
 def load_or_refresh_ag(topic_list=['Sports', 'Politics']):
-    cached = datetime.datetime.today().strftime("tmp/ag_%Y%m%d.pkl")
+    # cached = datetime.datetime.today().strftime("tmp/ag_%Y%m%d.pkl")
+    cached = "tmp/ag_20200707.pkl"
     if os.path.isfile(cached):
         with open(cached, "rb") as pkl:
             ag = pickle.load(pkl)

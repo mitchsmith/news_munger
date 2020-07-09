@@ -23,10 +23,11 @@ class WikiPerson():
 
         """   """
 
-        print("initializing with".format(name_or_url))
         if re.search(r"^http", name_or_url):      
             self.url = name_or_url
+            self.name = re.sub(r'_', " ", self.url.split(r'\/')[-1])
         else:
+            self.name = name_or_url
             self.url = "https://wikipedia.org/wiki/{}".format(
                             re.sub(r"\s+", "_", name_or_url)
                             )
@@ -36,35 +37,20 @@ class WikiPerson():
         self.ambiguous = False
         self.alt_url = None
         self.born = None
+        self.died = None
         self.bio = None
         
         if request.status_code == 200:
             self.soup = BeautifulSoup(request.text, 'html.parser')
-            for p in self.soup.findAll('p'):
-                bd = re.search(r"\([^\)]*(born )([\w\s]+;)?\s*(.+?\d{4})", p.text)
-                if bd:
+            self.canonical_name = self.soup.find('h1').text
+            for i, p in enumerate(self.soup.findAll('p')):
+                bold = [b.text for b in p.findAll('b')]
+                if bold:
                     self.found = True
-                    if bd.groups()[1]:
-                        self.born = bd.groups()[1][:-1]
-                    self.birth_date = bd.groups()[2]
                     self.bio = p
+                    if self.canonical_name not in bold:
+                        self.canonical_name = bold[0]
                     break
-                elif re.search(r"fictional character", p.text):
-                    self.found = True
-                    self.fictional = True
-                    self.bio = p
-                    break
-                elif re.match(r"This article is about", p.text):
-                    self.found = True
-                    sef.ambiguous = True
-                    self.alt_url = "https://en.wikipedia.org{}".format(
-                            p.find(a).attrs['href']
-                            )
-                else:
-                    continue
-
-    def __repr__(self):
-        return "<WikiPerson {}>".format(self.full_name)
 
     @property
     def full_name(self):
@@ -91,6 +77,10 @@ class WikiPerson():
             return int( age.days // 365.25)
 
         return "Unknown"
+
+    def __repr__(self):
+        return "<WikiPerson {}>".format(self.full_name)
+
 
 
 class WikiOrg():

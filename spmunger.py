@@ -47,24 +47,104 @@ class Person():
     def __init__(self, name=None, *args, **kwargs):
         self.name = name
         self.appears_in = []
-        self._aka = []
+        self._aka = [name]
+        self._dates = []
+        self._born = None
+        self._died = None
         self._info = None
         self._wikidata = None
 
     def aka_include(self, alias_list):
-        self._aka.extend(alias_list)
+        aka = self._aka.extend(alias_list)
+
         self._aka = sorted(
-                            set(self._aka),
-                            key=lambda n: len(n.split(" ")),
-                            reverse = True
-                          )
+                set(self._aka),
+                key=lambda n: len(n.split(" ")),
+                reverse = True
+            )
     
+    def lookup(self):
+        
+        """Retrieve and parse available person info from wikipedia """
+
+        wikiperson = WikiPerson(self.name)
+        if wikiperson.found:
+            try:
+                self._bio = nlp(wikiperson.bio.text)
+                paren_pat = [{"ORTH": '('}, {"ORTH": {"!": ')'}, "OP": '+'}, {"ORTH": ')'}]
+                paren_matcher = Matcher(nlp.vocab)
+                paren_matcher.add('Parenthetical', None, paren_pat)
+                try:
+                    mid, lp, rp = paren_matcher(self._bio)[0]
+                    dates = [
+                            d for d in self._bio.ents
+                            if d.label_ == "DATE"
+                            and d[0].i > lp
+                            and d[-1].i < rp
+                            ]
+                    self._born = dates[0].orth_
+                    if len(dates) >1:
+                        self._died = dates[-1]
+                    for date in dates:
+                        m = [t.orth_ for t in date if t.is_alpha]
+                        d = [t.orth_ for t in date if t.is_digit and len(t.orth_) <= 2]
+                        y = [t.orth_ for t in date if t.is_digit and len(t.orth_) == 4]
+                        ds = []
+                        df = []
+                        if d:
+                            ds.append(d[0])
+                            df.append("%d")
+                        if m:
+                            ds.append(m[0])
+                            df.append("%B")
+                        ds.append(y[0])
+                        df.append("%Y")
+                        self._dates.append(
+                                datetime.datetime.strptime(
+                                    " ".join(ds),
+                                    " ".join(df)
+                                    )
+                            )
+                except IndexError:
+                    pass
+                self.aka_include([
+                    p.orth_ for p in self._bio.ents
+                    if p.label_ == "PERSON"
+                    #and p[-1].i < rp
+                    # TODO: fix or otherwise deal with spacy tokenizer bug:
+                    #       eg. lookup("Brett Veach")
+                    ])
+                self._wikidata = wikiperson
+            except AttributeError:
+                pass
+        
+        return self._wikidata
+
     def merge_info(info):
         self._info = info
 
     @property
     def aka(self):
         return self._aka
+
+    @property
+    def dates(self):
+        return (self._dates)
+
+    @property
+    def born(self):
+        return self._born
+
+    @property
+    def died(self):
+        return self._died
+
+    @property
+    def age(self):
+        if self._dates and self.died:
+            return int((self._dates[-1] - self._dates[0]).days // 365.25)
+        elif self._dates:
+            return int((datetime.datetime.now() - self._dates[0]).days // 365.25)
 
     @property
     def info(self):
@@ -74,11 +154,6 @@ class Person():
     def wikidata(self):
         return self._wikidata
     
-    @wikidata.setter
-    def wikidata(self, value):
-        if type(value) == WikiPerson:
-            self._wikidata = value
-
     def __repr__(self):
         return "<Person: {}>".format(self.name)
 
@@ -144,7 +219,7 @@ class Scanner():
     
     def __init__(self):
         self._document = None
-        self._entity_type = "PERSON"
+        self._entity_type = None
 
     def scan(self, document):
         
@@ -209,21 +284,20 @@ class PersonScanner(Scanner):
 
     def __init__(self):
         super().__init__()
+        self._entity_type = "PERSON"
+        self._people = []
 
-    def lookup_person(self, person_name):
+    def scan(self, document):
+        super().scan(document)
         
-        """Retrieve available person info from wikipedia
+        for entity in self._entities.keys():
+            person = Person(entity)
+            try:
+                person.lookup()
+            except:
+                pass
+            self._people.append(person)
 
-        ARGS: person_name (required) str
-
-        RETURNS: WikiPerson instance
-        
-        """
-        self.fullname = person_name
-        # query_term = self.fullname.replace(" ", "_")
-        #url = "https://en.wikipedia.org/w/index.php?search=" + query_term
-        wikiperson = WikiPerson(person_name)
-        return wikiperson
 
     def get_person_info(self, person):
         
@@ -294,7 +368,7 @@ class PersonScanner(Scanner):
 
     @property
     def people(self):
-        return self._entities
+        return self._people
     
     def __repr__(self):
         return "<PersonScanner {}>".format(" ".join(self._entities.keys()))
@@ -332,7 +406,8 @@ class DocumentCatalog():
     def collect_people(self):
         scanner = PersonScanner()
         for i, d in enumerate(self.documents):
-            doc_people = scanner.scan(d)
+            scanner.scan(d)
+            doc_people = scanner._entities
             for full_name in doc_people.keys():
                 print(full_name)
                 addme = True
@@ -343,7 +418,7 @@ class DocumentCatalog():
                         addme = False
                 except ValueError:
                     person = Person(full_name)
-                    person.wikidata = scanner.lookup_person(full_name)
+                    person.lookup()
                 person.aka_include(sorted(set(doc_people[full_name])))
                 # person.merge_info(scanner.get_person_info(full_name))
                 person.appears_in.append(i)
