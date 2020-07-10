@@ -513,7 +513,34 @@ class OrgScanner(Scanner):
     def __repr__(self):
         return "<OrgScanner {}>".format(" ".join(self._entities.keys()))
     
-   
+
+class GPEScanner(Scanner):
+    
+    """ """
+
+    def __init__(self):
+        super().__init__()
+        self._entity_type = "GPE"
+        self._gpes = []
+
+    def scan(self, document):
+        super().scan(document)
+        
+        for entity in self._entities.keys():
+            gpe = GeoPoliticalEntity(entity)
+            try:
+                gpe.lookup()
+            except:
+                pass
+            self._gpes.append(gpe)
+
+    @property
+    def gpes(self):
+        return self._gpes
+ 
+    def __repr__(self):
+        return "<GPEScanner {}>".format(" ".join(self._entities.keys()))
+
 
 class DocumentCatalog():
     
@@ -526,6 +553,7 @@ class DocumentCatalog():
         self.created_at = datetime.datetime.now().isoformat()
         self.people = []
         self.orgs = []
+        self.gpes = []
 
     def collect_people(self):
         scanner = PersonScanner()
@@ -568,6 +596,27 @@ class DocumentCatalog():
                 org.appears_in.append(i)
                 if addme and org.wikidata.found:
                     self.orgs.append(org)
+
+    def collect_gpes(self):
+        scanner = GPEScanner()
+        for i, d in enumerate(self.documents):
+            scanner.scan(d)
+            doc_gpes = scanner._entities
+            for gpe_name in doc_gpes.keys():
+                addme = True
+                try:
+                    idx = [o.name for o in self.gpes].index(gpe_name)
+                    if idx:
+                        gpe = self.gpes[idx]
+                        addme = False
+                except ValueError:
+                    gpe = GeoPoliticalEntity(gpe_name)
+                    gpe.wikidata = WikiGPE(gpe_name)
+                gpe.aka_include(sorted(set(doc_gpes[gpe_name])))
+                gpe.appears_in.append(i)
+                if addme and gpe.wikidata.found:
+                    self.gpes.append(gpe)
+
 
 
     def __repr__(self):
