@@ -90,14 +90,17 @@ class WikiOrg():
     def __init__(self, name_or_url):
 
         """   """
-
-        print("Initializing with".format(name_or_url))
         if re.search(r"^http", name_or_url):      
             self.url = name_or_url
+            self.name = re.sub(r'_', " ", self.url.split(r'\/')[-1])
         else:
+            self.name = name_or_url
             self.url = "https://wikipedia.org/wiki/{}".format(
-                            re.sub(r"\s+", "_", name_or_url)
+                            re.sub(
+                                r"\s+", "_",
+                                re.sub(r'^the\s+', '', self.name, flags=re.IGNORECASE)
                             )
+                        )
         request = requests.get(self.url)
         self.canonical_name = None
         self.abbr = None
@@ -116,7 +119,8 @@ class WikiOrg():
                     self.found = True
                     self.description = p
                     try:
-                        self.abbr = bold[1]
+                        if re.search(r'^[A-Z\.]+', bold[1]):
+                            self.abbr = bold[1]
                     except:
                         pass
                     break

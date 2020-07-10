@@ -163,20 +163,62 @@ class Organization():
     """  """
 
     def __init__(self, name=None, *args, **kwargs):
-        self.name = name
+        self.determiner = False
+        if re.search(r'^[Tt]he', name):
+            self.determiner = True
+        self.name = re.sub(r'[Tt]he\s+', '', name)
+        self.canonical_name = None
+        self.abbr = None
         self.appears_in = []
         self._aka = []
         self._info = None
         self._wikidata = None
 
+    def lookup(self):
+
+        """Retrieve and parse available organization info from wikipedia """
+
+        wikiorg = WikiOrg(self.name)
+        if wikiorg.found:
+            self._wikidata = wikiorg
+            self.canonical_name = self._wikidata.canonical_name
+            try:
+                self._description = nlp(self._wikidata.description.text)
+                self.abbr = self._wikidata.abbr
+                paren_pat = [{"ORTH": '('}, {"ORTH": {"!": ')'}, "OP": '+'}, {"ORTH": ')'}]
+                paren_matcher = Matcher(nlp.vocab)
+                paren_matcher.add('Parenthetical', None, paren_pat)
+                try:
+                    mid, lp, rp = paren_matcher(self._description)[0]
+                    if lp and not self.abbr:
+                        if re.search(r'^[A-Z\.]+]$', self._description[lp:rp].orth_):
+                            self.abbr = self._description[lp:rp].orth_
+                    elif lp and rp and not re.search(r'^/', self._description[lp:rp].orth_):
+                        self.aka_include([self._description[lp+1:rp -1].orth_])
+                except IndexError:
+                    pass
+                
+            except AttributeError:
+                pass
+ 
+            if self.abbr:
+                self.aka_include([self.abbr])
+                
+            self.aka_include([
+                    self._wikidata.canonical_name,
+                    self._wikidata.name,
+                ])
+       
+        return self._wikidata
+
     def aka_include(self, alias_list):
-        self._aka.extend(alias_list)
+        aka = self._aka.extend(alias_list)
         self._aka = sorted(
-                            set(self._aka),
-                            key=lambda n: len(n.split(" ")),
-                            reverse = True
-                          )
-    
+                set(self._aka),
+                key=lambda n: len(n.split(" ")),
+                reverse = True
+            )
+
     def merge_info(info):
         self._info = info
 
@@ -377,14 +419,26 @@ class PersonScanner(Scanner):
 class OrgScanner(Scanner):
     
     """ """
-    
+
     def __init__(self):
         super().__init__()
         self._entity_type = "ORG"
+        self._orgs = []
+
+    def scan(self, document):
+        super().scan(document)
+        
+        for entity in self._entities.keys():
+            org = Organization(entity)
+            try:
+                org.lookup()
+            except:
+                pass
+            self._orgs.append(org)
 
     @property
     def orgs(self):
-        return self._entities
+        return self._orgs
  
     def __repr__(self):
         return "<OrgScanner {}>".format(" ".join(self._entities.keys()))
@@ -428,7 +482,8 @@ class DocumentCatalog():
     def collect_orgs(self):
         scanner = OrgScanner()
         for i, d in enumerate(self.documents):
-            doc_orgs = scanner.scan(d)
+            scanner.scan(d)
+            doc_orgs = scanner._entities
             for org_name in doc_orgs.keys():
                 addme = True
                 try:
@@ -441,7 +496,7 @@ class DocumentCatalog():
                     org.wikidata = WikiOrg(org_name)
                 org.aka_include(sorted(set(doc_orgs[org_name])))
                 org.appears_in.append(i)
-                if addme:
+                if addme and org.wikidata.found:
                     self.orgs.append(org)
 
 
