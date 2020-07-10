@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
-""" This module provides a collection of utilities for creating a madlibs-
-style digest of news headlines and stories from a variety of feeds and 
-scraped web pages.
-"""
+""" This module provides scrapers for a variety of feeds and web pages. """
 
 import os
 import re
 import time
+import datetime
 import json
 import requests
 from bs4 import BeautifulSoup
