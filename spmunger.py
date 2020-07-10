@@ -20,7 +20,7 @@ from spacy.matcher import Matcher, PhraseMatcher
 from collections import deque
 from scrapersI import Trends, Aggregator, APHeadlines, APArticle
 from scrapersI import GENERIC_TITLES, FEMININE_TITLES, MASCULINE_TITLES
-from scrapersII import WikiPerson, WikiOrg
+from scrapersII import WikiPerson, WikiOrg, WikiGPE
 from gtts import  list_voices, text_to_mp3
 from helpers import kill_firefox
 from munger import load_or_refresh_ag 
@@ -249,7 +249,77 @@ class GeoPoliticalEntity():
     """  """
     
     def __init__(self, name=None, *args, **kwargs):
-        self.name = name
+        self.determiner = False
+        if re.search(r'^[Tt]he', name):
+            self.determiner = True
+        self.name = re.sub(r'[Tt]he\s+', '', name)
+        self.canonical_name = None
+        self.isa = None
+        self.abbrs = []
+        self.appears_in = []
+        self._aka = []
+        self._info = None
+        self._wikidata = None
+
+    def lookup(self):
+
+        """Retrieve and parse available GPE info from wikipedia """
+
+        wikigpe = WikiGPE(self.name)
+        if wikigpe.found:
+            self._wikidata = wikigpe
+            self.canonical_name = self._wikidata.canonical_name
+            description_text = re.sub(
+                        r'\[\d+\]',
+                        '',
+                        self._wikidata.description.text
+                        )
+            self._description = nlp(description_text)
+            isa_pattern = [
+                        {"LEMMA": "be"},
+                        {"POS": "DET"},
+                        {"POS": {"IN": ['NOUN', 'ADJ', 'PREP']}, "OP": '*'},
+                        {"POS": 'NOUN'}
+                        ]
+            isa_matcher = Matcher(nlp.vocab)
+            isa_matcher.add('ISA', None, isa_pattern)
+            try:
+                mid, start, end = isa_matcher(self._description)[0]
+                self.isa = self._description[start+2:end].lower_
+            except IndexError:
+                pass
+            for text in self._wikidata.bold:
+                if re.search(r'^[A-Z\.]+$', text):
+                    self.abbrs.append(text)
+                else:
+                    self.aka_include([text])
+                
+            if self._wikidata.abbr:
+                self.abbrs.append(self._wikidata.abbr)
+
+            self.abbrs = sorted(
+                        set(self.abbrs),
+                        key = lambda a: len(a),
+                        reverse = True
+                        )
+ 
+            if self.abbrs:
+                self.aka_include([self.abbrs])
+                
+            self.aka_include([
+                    self._wikidata.canonical_name,
+                    self._wikidata.name,
+                ])
+       
+        return self._wikidata
+
+    def aka_include(self, alias_list):
+        aka = self._aka.extend(alias_list)
+        self._aka = sorted(
+                set(self._aka),
+                key=lambda n: len(n.split(" ")),
+                reverse = True
+            )
 
     def __repr__(self):
         return "<GeoPoliticalEntity: {}>".format(self.name)

@@ -39,17 +39,18 @@ class WikiPerson():
         self.born = None
         self.died = None
         self.bio = None
+        self.bold = None
         
         if request.status_code == 200:
             self.soup = BeautifulSoup(request.text, 'html.parser')
             self.canonical_name = self.soup.find('h1').text
             for i, p in enumerate(self.soup.findAll('p')):
-                bold = [b.text for b in p.findAll('b')]
-                if bold:
+                self.bold = [b.text for b in p.findAll('b')]
+                if self.bold:
                     self.found = True
                     self.bio = p
-                    if self.canonical_name not in bold:
-                        self.canonical_name = bold[0]
+                    if self.canonical_name not in self.bold:
+                        self.canonical_name = self.bold[0]
                     break
 
     @property
@@ -90,17 +91,18 @@ class WikiOrg():
     def __init__(self, name_or_url):
 
         """   """
+
+        self.determiner = False
         if re.search(r"^http", name_or_url):      
             self.url = name_or_url
             self.name = re.sub(r'_', " ", self.url.split(r'\/')[-1])
         else:
-            self.name = name_or_url
+            if re.search(r'^the\s+', name_or_url, flags=re.IGNORECASE):
+                self.determiner = True
+            self.name = re.sub(r'^the\s+', '', name_or_url, flags=re.IGNORECASE)
             self.url = "https://wikipedia.org/wiki/{}".format(
-                            re.sub(
-                                r"\s+", "_",
-                                re.sub(r'^the\s+', '', self.name, flags=re.IGNORECASE)
-                            )
-                        )
+                            re.sub(r"\s+", "_", self.name)
+                            )   
         request = requests.get(self.url)
         self.canonical_name = None
         self.abbr = None
@@ -109,23 +111,72 @@ class WikiOrg():
         self.ambiguous = False
         self.alt_url = None
         self.description = None
+        self.bold = None
         
         if request.status_code == 200:
             self.soup = BeautifulSoup(request.text, 'html.parser')
             self.canonical_name = self.soup.find('h1').text
             for i, p in enumerate(self.soup.findAll('p')):
-                bold = [b.text for b in p.findAll('b')]
-                if self.canonical_name and self.canonical_name in bold:
+                self.bold = [b.text for b in p.findAll('b')]
+                if self.canonical_name and self.canonical_name in self.bold:
                     self.found = True
                     self.description = p
                     try:
-                        if re.search(r'^[A-Z\.]+', bold[1]):
-                            self.abbr = bold[1]
+                        if re.search(r'^[A-Z\.]+', self.bold[1]):
+                            self.abbr = self.bold[1]
                     except:
                         pass
                     break
                     
     def __repr__(self):
         return "<WikiOrg {}>".format(self.canonical_name)
+
+
+class WikiGPE():
+    
+    """   """
+    
+    def __init__(self, name_or_url):
+
+
+        """   """
+
+        self.determiner = False
+        if re.search(r"^http", name_or_url):      
+            self.url = name_or_url
+            self.name = re.sub(r'_', " ", self.url.split(r'\/')[-1])
+        else:
+            if re.search(r'^the\s+', name_or_url, flags=re.IGNORECASE):
+                self.determiner = True
+            self.name = re.sub(r'^the\s+', '', name_or_url, flags=re.IGNORECASE)
+            self.url = "https://wikipedia.org/wiki/{}".format(
+                            re.sub(r"\s+", "_", self.name)
+                            )   
+        request = requests.get(self.url)
+        self.canonical_name = None
+        self.abbr = None
+        self.found = False
+        self.fictional = False
+        self.ambiguous = False
+        self.alt_url = None
+        self.description = None
+        self.bold = []       
+        if request.status_code == 200:
+            self.soup = BeautifulSoup(request.text, 'html.parser')
+            self.canonical_name = self.soup.find('h1').text
+            for i, p in enumerate(self.soup.findAll('p')):
+                self.bold = [b.text for b in p.findAll('b')]
+                if self.canonical_name and self.canonical_name in self.bold:
+                    self.found = True
+                    self.description = p
+                    try:
+                        if re.search(r'^[A-Z\.]+', self.bold[1]):
+                            self.abbr = self.bold[1]
+                    except:
+                        pass
+                    break
+                    
+    def __repr__(self):
+        return "<WikiGPE {}>".format(self.canonical_name)
 
 
