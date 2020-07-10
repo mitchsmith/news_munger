@@ -19,11 +19,10 @@ from spacy.tokens import Doc, Span, Token
 from spacy.matcher import Matcher, PhraseMatcher
 from collections import deque
 from scrapersI import Trends, Aggregator, APHeadlines, APArticle
-from scrapersI import GENERIC_TITLES, FEMININE_TITLES, MASCULINE_TITLES
 from scrapersI import WikiPerson, WikiOrg, WikiGPE
-from gtts import  list_voices, text_to_mp3
 from helpers import kill_firefox
-from munger import load_or_refresh_ag 
+from helpers import GENERIC_TITLES, FEMININE_TITLES, MASCULINE_TITLES
+from gtts import  list_voices, text_to_mp3
 
 nlp = spacy.load("en_core_web_md")
 
@@ -650,6 +649,43 @@ class ExquisiteCorpse():
 
 
 # Functions
+
+def load_or_refresh_ag(topic_list=['Sports', 'Politics']):
+    # cached = datetime.datetime.today().strftime("tmp/ag_%Y%m%d.pkl")
+    cached = "tmp/ag_20200707.pkl"
+    if os.path.isfile(cached):
+        with open(cached, "rb") as pkl:
+            ag = pickle.load(pkl)
+    else:
+        ag = Aggregator()
+        ag.collect_ap_headlines()
+        
+        for top in topic_list:
+            failed = 0
+            stopat = len(ag.stories) + 2
+            for url in [h[1] for h in ag.headlines if h[0] == top]:
+                try:
+                    ag.fetch_ap_article(url)
+                except:
+                    kill_firefox()
+                    time.sleep(3)
+                    failed += 1
+                    if failed < 4:
+                        continue
+                    else:
+                        break
+                if len(ag.stories) >= stopat:
+                    break
+
+        for story in ag.stories:
+            # ditch unpicklable
+            story.driver = None
+
+        with open(cached, "wb") as pkl:
+            pickle.dump(ag, pkl)
+        
+    return ag
+
 
 
 # Execute on module load
