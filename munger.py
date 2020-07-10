@@ -19,7 +19,7 @@ from spacy.tokens import Doc, Span, Token
 from spacy.matcher import Matcher, PhraseMatcher
 from collections import deque
 from scrapersI import Trends, Aggregator, APHeadlines, APArticle
-from scrapersII import WikiPerson
+from scrapersI import WikiPerson
 from gtts import  list_voices, text_to_mp3
 from helpers import kill_firefox
 

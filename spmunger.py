@@ -20,7 +20,7 @@ from spacy.matcher import Matcher, PhraseMatcher
 from collections import deque
 from scrapersI import Trends, Aggregator, APHeadlines, APArticle
 from scrapersI import GENERIC_TITLES, FEMININE_TITLES, MASCULINE_TITLES
-from scrapersII import WikiPerson, WikiOrg, WikiGPE
+from scrapersI import WikiPerson, WikiOrg, WikiGPE
 from gtts import  list_voices, text_to_mp3
 from helpers import kill_firefox
 from munger import load_or_refresh_ag 
