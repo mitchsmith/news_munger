@@ -1,5 +1,6 @@
 import unittest
 from munger import *
+from scrapers import *
 
 class TestSeleniumScrapers(unittest.TestCase):
 

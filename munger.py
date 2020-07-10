@@ -18,10 +18,10 @@ from spacy.lang.en import English
 from spacy.tokens import Doc, Span, Token
 from spacy.matcher import Matcher, PhraseMatcher
 from collections import deque
-from scrapersI import Trends, Aggregator, APHeadlines, APArticle
-from scrapersI import WikiPerson, WikiOrg, WikiGPE
+from scrapers import Trends, Aggregator, APHeadlines, APArticle
+from scrapers import WikiPerson, WikiOrg, WikiGPE
 from helpers import kill_firefox
-from helpers import GENERIC_TITLES, FEMININE_TITLES, MASCULINE_TITLES
+from helpers import GENERIC_TITLES, FEMININE_TITLES, MASCULINE_TITLES, PRESIDENTIOSITUDE
 from gtts import  list_voices, text_to_mp3
 
 nlp = spacy.load("en_core_web_md")
@@ -1035,8 +1035,7 @@ def shuffle_and_merge(documents):
 
 
 def load_or_refresh_ag(topic_list=['Sports', 'Politics']):
-    # cached = datetime.datetime.today().strftime("tmp/ag_%Y%m%d.pkl")
-    cached = "tmp/ag_20200707.pkl"
+    cached = datetime.datetime.today().strftime("tmp/ag_%Y%m%d.pkl")
     if os.path.isfile(cached):
         with open(cached, "rb") as pkl:
             ag = pickle.load(pkl)
