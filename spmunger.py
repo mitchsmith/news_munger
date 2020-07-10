@@ -650,6 +650,390 @@ class ExquisiteCorpse():
 
 # Functions
 
+def interleave_sentences(doc1, doc2):
+    
+    """ """
+    
+    text = ""
+    newlines = re.compile(r"(\n+$)")
+    articles = sorted([doc1, doc2], key=lambda doc: len([s for s in doc.sents]))
+    for i, sentence in enumerate(articles[0].sents):
+        if i % 2 == 0:
+            text += sentence.text
+        else:
+            alttext = newlines.sub(
+                                   newlines.search(sentence.text).groups()[0],
+                                   [s for s in articles[1].sents][i].text
+                                  )
+            text += alttext
+        
+    return nlp(text)
+                
+
+def objectify(document):
+
+    """ Swap subjects with direct objects
+    
+    TODO: Rewrite this spaCily
+    """
+    if type(document) == Doc:
+        doc = document
+    elif type(document) == Span:
+        doc = document.as_doc()
+    elif type(document) == str:
+        doc = nlp(document)
+    else:
+        raise TypeError("The document must be of type str, Doc, or Span.")
+
+    for s in doc.sents:
+        new_text = ""
+        # find the noun chunks
+        nplist = [n for n in s.noun_chunks]
+        
+        # find the subject
+        nsubj = [n for n in nplist if n.root.dep_ =='nsubj']
+        if nsubj:
+            nsubj = nsubj[0]
+        # find the subject's direct object
+        dobj = [
+                n for n in nplist
+                if n.root.dep_ =='dobj'
+                and n.root.head == nsubj.root.head
+               ]
+        if dobj:
+            dobj = dobj[0]
+        # get sentence text
+        text = s.orth_
+        # replacement string for new subject
+        replacement_s = ''.join(
+                [t.text_with_ws for t in dobj if t.dep_ not in ['poss', 'det']]
+                )
+        print("s {}".format(replacement_s))
+        # replacement string for new D.O.
+        replacement_o = ''.join(
+                [t.text_with_ws for t in nsubj if t.dep_ not in ['poss', 'det']]
+                )
+        print("o {}".format(replacement_o))
+        # temp replacement (shape of original subject)
+        tmp_replace = replacement_o
+        tmp_replace = ''.join([re.sub(
+                 t.orth_, t.shape_, tmp_replace
+               ) for t in nsubj if t.dep_ not in ['poss', 'det']])
+        print("temp {}".format(tmp_replace))
+        # replace orig subj with tmp_replace
+        text = re.sub(replacement_o, tmp_replace, text)
+        # replace orig D.O. with new subj
+        text = re.sub(replacement_s, replacement_o, text)
+        # replace tmp subj with new subj
+        text = re.sub(tmp_replace, replacement_s, text)
+
+        new_text += text
+    return new_text
+
+
+def strip_bottoms(documents):
+
+    """  """
+    stripped = []
+
+    for i, d in enumerate(documents):
+        try:
+            end = [s.root.i for s in d.sents if s.root.orth_ == "_"][0]
+        except IndexError:
+            end = -1
+        stripped.append(d[:end].as_doc())
+
+    return stripped
+
+
+def swap_main_verbs(doc1, doc2):
+    
+    """ """
+    docs = strip_bottoms([doc1, doc2])
+    verb_sets = []
+    new_texts = ["", ""]
+    for d in docs:
+        verb_sets.append(
+                        set([
+                            s.root.lemma_
+                            for s 
+                            in d.sents 
+                            if s.root.pos_ == "VERB"
+                        ])
+                    )
+
+    for i, d in enumerate(docs):
+        patterns = list(verb_sets[i] - verb_sets[(i + 1) % 2])
+        replacements = list(verb_sets[(i + 1) % 2] - verb_sets[i])
+        for s in d.sents:
+            if s.root.lemma_ in patterns:
+                t = s.text_with_ws
+                p = s.root.orth_
+                r = [
+                    x.root._.inflect(s.root.tag_)
+                    for x
+                    in docs[(i + 1) % 2].sents
+                    if x.root.lemma_ == replacements[
+                        patterns.index(s.root.lemma_) % len(replacements)
+                        ]
+                    ][0]
+                text = re.sub(p, r, t)
+                new_texts[i % 2] += text
+            else:
+                new_texts[i % 2] += s.text_with_ws
+    
+    
+
+    return new_texts
+
+
+def swap_sent_ents(ent_label, *args):
+
+    """ """
+
+    stripped = strip_bottoms(args)
+    ent_sets = []
+    munged_texts = []
+
+    for d in stripped:
+        span_texts = ["".join([
+                                t.text_with_ws
+                                for t
+                                in e
+                                if t.dep_ != "det"
+                              ]
+                             )
+                        for e
+                        in d.ents
+                        if e.label_ == ent_label
+                     ]
+        ent_sets.append(list(set(span_texts) - {'AP', 'Associated Press'}))
+    
+    for i, d in enumerate(stripped):
+        munged_sents = []
+        for j, s in enumerate(d.sents):
+            text = s.text_with_ws
+            text = re.sub(r"^[A-Z]+ +\(AP\) — ", "", text)
+            ents = [e for e in s.ents if e.label_ == ent_label]
+            if len(ents) > 0:
+                for k, pattern in enumerate(ent_sets[i]):
+                    replacement = ent_sets[(i + 1) % 2][k % len(ent_sets[(i + 1) % 2])]
+                    replacement = re.sub(" ?$", " ", replacement)
+                    text = re.sub(pattern, replacement, text)
+                
+                munged_sents.append((j, text))
+
+        munged = "".join([s[1] for s in sorted(munged_sents, key=lambda s: s[0])])
+        munged = re.sub(r" +"," ", munged)
+        munged = re.sub(r" (\W|$)", "", munged)
+        munged_texts.append(munged)
+    
+    return munged_texts
+
+
+def swap_ents(ent_label, *args):
+
+    """ """
+
+    stripped = strip_bottoms(args)
+    ent_sets = []
+    new_texts = []
+    
+    for d in stripped:
+        s = ["".join([
+                      t.text_with_ws
+                      for t
+                      in e
+                      ]
+                      # if t.dep_ != "det"]
+                    )
+                    for e
+                    in d.ents
+                    if e.label_ == ent_label
+            ]
+        ent_sets.append(list(set(s) - {'AP', 'Associated Press'}))
+
+    for i, d in enumerate(stripped):
+        text = d.text_with_ws
+        replacements = set()
+        
+        for j, s in enumerate(ent_sets):
+            if j != i:
+                replacements = replacements.union(set(s))
+
+        for j, pattern in enumerate(ent_sets[i]):
+            text = re.sub(
+                    pattern,
+                    "{} ".format(
+                        list(replacements)[j % len(replacements)]
+                        ),
+                    text
+                    )
+        new_texts.append(text)
+    
+    return new_texts
+
+
+def collect_verbs(documents):
+
+    """Create lists of unique verbs in documents arranged by valence.  """
+
+    allverbs = []
+    for doc in documents:
+        allverbs.extend(
+                    sorted(
+                        set(
+                            [
+                                (v.lemma_, len(
+                                    [
+                                        t.dep_
+                                        for t
+                                        in v.children
+                                        if t.dep_
+                                        in ['nsubj','dobj','xcomp', 'prep']
+                                    ]
+                                )
+                            )
+                            for v
+                            in doc
+                            if v.pos_ == "VERB"
+                            and v.is_alpha
+                            ]
+                           ), key=lambda tup: tup[1]
+                         )
+                      )
+    verbs = [[],[],[]]
+    
+    for v in set(allverbs):
+         try:
+             verbs[v[1]].append(nlp(v[0])[0])
+         except IndexError:
+             verbs[2].append(nlp(v[0])[0])
+    return verbs
+
+
+def collect_verb_lemmas(documents):
+    
+    """Create single list of unique verb lemmas  """
+    
+    lemmas = []
+    for doc in documents:
+        lemmas.extend(
+                        [
+                            v.lemma_
+                            for v
+                            in doc
+                            if v.pos_ == "VERB"
+                            and v.is_alpha
+                        ]
+                    )
+    return [nlp(v)[0] for v in sorted(set(lemmas))]
+
+
+
+def scramble_verbs(documents, ranked_verbs=None):
+
+    """   """
+
+    new_texts = []
+
+    if ranked_verbs:
+        bags = ranked_verbs
+    else:
+        bags = collect_verbs(documents)
+    
+    for i, doc in enumerate(strip_bottoms(documents)):
+        new_texts.append(doc.text_with_ws)
+
+        for token in doc:
+            if token.pos_ == "VERB" and token.is_alpha:
+            #    valence = len([
+            #                    t.dep_
+            #                    for t
+            #                    in token.children
+            #                    if t.dep_
+            #                    in ['nsubj','dobj','xcomp', 'prep']
+            #                  ])
+            #    if valence > 2:
+            #        valence = 2
+                p = token.orth_
+                r = [
+                        v._.inflect(token.tag_)
+                        for v
+                        in sorted(
+                                    [
+                                        tok
+                                        for tok
+                                        # in bags[valence]
+                                        in bags
+                                        if tok.lemma_ != token.lemma_
+                                    ],
+                                    key=lambda s: s.similarity(token)
+                                 )
+                    ][-3]
+
+                if token.is_title:
+                    r = r.title()
+                
+                new_texts[i] = re.sub(p, r, new_texts[i])
+    
+    return new_texts
+
+
+def scramble_verbs_II(documents):
+    
+    """ """
+    
+    stripped = strip_bottoms(documents)
+    verbs = collect_verb_lemmas(stripped)
+    texts = []
+    for i, d in enumerate(stripped):
+        doctext = []
+        for s in d.sents:
+            s_text = s.text_with_ws
+            for t in s:
+                if t.pos_ == "VERB" and t.is_alpha:
+                    p = r"( |^)({})(\W|$)".format(t.orth_)
+                    choices = sorted(
+                                    [tok for tok in verbs if tok.lemma_ != t.lemma_],
+                                    key=lambda s: s.similarity(t)
+                                    )
+                    rpl = choices[-1]._.inflect(t.tag_)
+                    if t.is_title:
+                        rpl = rpl.title()
+                    s_text = re.sub(p, r"\1{}\3".format(rpl), s_text)
+
+            doctext.append(s_text)
+                    
+        texts.append("".join(doctext))
+    return texts
+
+    
+def traverse(node):
+    if node.n_lefts + node.n_rights > 0:
+        return [(node.i, node), [traverse(child) for child in node.children]]
+    else:
+        return (node.i, node)
+
+
+def shuffle_and_merge(documents):
+    
+    """   """
+
+    base = swap_ents("ORG", documents[0], documents[-1])
+    munged = []
+    for text in base:
+        re.sub(r" +", " ", text, re.DOTALL)
+        doc = nlp(text)
+        munged.append(doc)
+        print(len(list(doc.sents)))
+
+    combined = [s.text_with_ws for s in munged[0].sents][:14]
+    combined.extend([s.text_with_ws for s in munged[1].sents][-5:])
+
+    return nlp("".join(combined))
+
+
 def load_or_refresh_ag(topic_list=['Sports', 'Politics']):
     # cached = datetime.datetime.today().strftime("tmp/ag_%Y%m%d.pkl")
     cached = "tmp/ag_20200707.pkl"
@@ -688,7 +1072,7 @@ def load_or_refresh_ag(topic_list=['Sports', 'Politics']):
 
 
 
-# Execute on module load
+# Execute on import
 
 ag = load_or_refresh_ag(topic_list=[
                                     'Sports',
@@ -709,6 +1093,12 @@ for i, story in enumerate(ag.stories):
     docs[i]._.title = story.title
     docs[i]._.byline = story.byline
     docs[i]._.timestamp = story.timestamp
+
+
+# Unit Tests #
+
+if __name__ == "__main__":
+    pass
 
 
 
