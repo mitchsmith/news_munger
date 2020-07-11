@@ -19,12 +19,9 @@ from helpers import kill_firefox
 
 class WikiPerson():
     
-    """   """
+    """Information about a person entity gleaned from Wikipedia """
     
     def __init__(self, name_or_url):
-
-        """   """
-
         if re.search(r"^http", name_or_url):      
             self.url = name_or_url
             self.name = re.sub(r'_', " ", self.url.split(r'\/')[-1])
@@ -87,12 +84,9 @@ class WikiPerson():
 
 class WikiOrg():
     
-    """   """
+    """Information about an orgaization entity gleaned from Wikipedia """
     
     def __init__(self, name_or_url):
-
-        """   """
-
         self.determiner = False
         if re.search(r"^http", name_or_url):      
             self.url = name_or_url
@@ -135,13 +129,9 @@ class WikiOrg():
 
 class WikiGPE():
     
-    """   """
+    """Information about an geopolitical entity gleaned from Wikipedia """
     
     def __init__(self, name_or_url):
-
-
-        """   """
-
         self.determiner = False
         if re.search(r"^http", name_or_url):      
             self.url = name_or_url
@@ -467,12 +457,6 @@ class Aggregator():
         return "<Aggregator object - properties: {}>".format(
                 "'topics', 'headlines', 'stories'"
                 )
-
-
-
-
-
-
 
 
 if __name__ == "__main__":

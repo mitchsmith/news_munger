@@ -41,7 +41,7 @@ except ValueError:
 
 class Person():
     
-    """  """
+    """A person as identified in spacy doc ents """
     
     def __init__(self, name=None, *args, **kwargs):
         self.name = name
@@ -54,6 +54,9 @@ class Person():
         self._wikidata = None
 
     def aka_include(self, alias_list):
+
+        """Include uniqe name varients in the list of aliases """
+
         aka = self._aka.extend(alias_list)
 
         self._aka = sorted(
@@ -120,6 +123,9 @@ class Person():
         return self._wikidata
 
     def merge_info(info):
+
+        """Normalize and include additional info (Not yet implemented) """
+
         self._info = info
 
     @property
@@ -159,7 +165,7 @@ class Person():
 
 class Organization():
     
-    """  """
+    """An organization as identified in spacy doc ents """
 
     def __init__(self, name=None, *args, **kwargs):
         self.determiner = False
@@ -245,7 +251,7 @@ class Organization():
 
 class GeoPoliticalEntity():
     
-    """  """
+    """An geopolitical entity as identified in spacy doc ents """
     
     def __init__(self, name=None, *args, **kwargs):
         self.determiner = False
@@ -326,7 +332,7 @@ class GeoPoliticalEntity():
 
 class Scanner():
 
-    """ """
+    """Base Class for named entity document scanner """
     
     def __init__(self):
         self._document = None
@@ -387,11 +393,9 @@ class Scanner():
         return "<Scanner {}>".format(" ".join(self._entities.keys()))
 
 
-
-
 class PersonScanner(Scanner):
 
-    """ Location, labeling, and collation of named PERSON entities """
+    """Location, labeling, and collation of named PERSON entities """
 
     def __init__(self):
         super().__init__()
@@ -399,6 +403,9 @@ class PersonScanner(Scanner):
         self._people = []
 
     def scan(self, document):
+
+        """Locate PERSON entities and instantiate Person objects """
+
         super().scan(document)
         
         for entity in self._entities.keys():
@@ -412,7 +419,7 @@ class PersonScanner(Scanner):
 
     def get_person_info(self, person):
         
-        """ try to determine gender, etc. from the most complete PERSON reference.
+        """Try to determine gender, etc. from the most complete PERSON reference.
         
         ARGS:
             person (required) string: all or part of the person's full name
@@ -487,7 +494,7 @@ class PersonScanner(Scanner):
 
 class OrgScanner(Scanner):
     
-    """ """
+    """Location, labeling, and collation of named ORG entities """
 
     def __init__(self):
         super().__init__()
@@ -495,6 +502,9 @@ class OrgScanner(Scanner):
         self._orgs = []
 
     def scan(self, document):
+
+        """Locate ORG entities and instantiate Person objects """
+
         super().scan(document)
         
         for entity in self._entities.keys():
@@ -515,7 +525,7 @@ class OrgScanner(Scanner):
 
 class GPEScanner(Scanner):
     
-    """ """
+    """Location, labeling, and collation of named GPE entities """
 
     def __init__(self):
         super().__init__()
@@ -523,6 +533,9 @@ class GPEScanner(Scanner):
         self._gpes = []
 
     def scan(self, document):
+
+        """Locate GPE entities and instantiate Person objects  """
+
         super().scan(document)
         
         for entity in self._entities.keys():
@@ -543,7 +556,7 @@ class GPEScanner(Scanner):
 
 class DocumentCatalog():
     
-    """  """
+    """Collections of named Entities extracted from across muntiple docs """
 
     def __init__(self, document_list, *args, **kwargs):
         if type(document_list) != list:
@@ -555,6 +568,9 @@ class DocumentCatalog():
         self.gpes = []
 
     def collect_people(self):
+
+        """Collect list of Person objects """
+
         scanner = PersonScanner()
         for i, d in enumerate(self.documents):
             scanner.scan(d)
@@ -577,7 +593,10 @@ class DocumentCatalog():
                     self.people.append(person)
 
     def collect_orgs(self):
-        scanner = OrgScanner()
+ 
+        """Collect list of Organization objects """
+
+       scanner = OrgScanner()
         for i, d in enumerate(self.documents):
             scanner.scan(d)
             doc_orgs = scanner._entities
@@ -597,6 +616,9 @@ class DocumentCatalog():
                     self.orgs.append(org)
 
     def collect_gpes(self):
+        
+        """Collect list of Organization objects """
+        
         scanner = GPEScanner()
         for i, d in enumerate(self.documents):
             scanner.scan(d)

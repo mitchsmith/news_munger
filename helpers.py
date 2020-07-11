@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""  """
+"""Helper functions and nltk-based NLP classes and utiities """
 
 import os
 import subprocess

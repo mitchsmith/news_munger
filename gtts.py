@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""  """
+"""Robot voices from google text to speech api """
 
 from google.cloud import texttospeech as tts
 
