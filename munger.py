@@ -20,7 +20,7 @@ from spacy.matcher import Matcher, PhraseMatcher
 from collections import deque
 from scrapers import Trends, Aggregator, APHeadlines, APArticle
 from scrapers import WikiPerson, WikiOrg, WikiGPE
-from helpers import kill_firefox
+from helpers import find_duplicates, kill_firefox
 from helpers import GENERIC_TITLES, FEMININE_TITLES, MASCULINE_TITLES, PRESIDENTIOSITUDE
 from gtts import  list_voices, text_to_mp3
 
@@ -566,6 +566,8 @@ class DocumentCatalog():
         self.people = []
         self.orgs = []
         self.gpes = []
+        self.subj_np_forms = {}
+        self.np_complement_forms = {}
 
     def collect_people(self):
 
@@ -596,7 +598,7 @@ class DocumentCatalog():
  
         """Collect list of Organization objects """
 
-       scanner = OrgScanner()
+        scanner = OrgScanner()
         for i, d in enumerate(self.documents):
             scanner.scan(d)
             doc_orgs = scanner._entities
@@ -638,8 +640,92 @@ class DocumentCatalog():
                 if addme and gpe.wikidata.found:
                     self.gpes.append(gpe)
 
+    
+    def collect_subj_np_forms(self):
+        
+        """ """
+        
+        for i, d in enumerate(self.documents):
+            for j, sent in enumerate([s for s in d.sents]):
+                idx = [t.orth_ for t in sent].index(sent.root.orth_)
+                try:
+                    self.subj_np_forms[
+                            "-".join([t.dep_ for t in sent[:idx]])
+                            ].append((sent.root, i, j, idx))
+                except KeyError:
+                    self.subj_np_forms[
+                            "-".join([t.dep_ for t in sent[:idx]])
+                            ] = [(sent.root, i, j, idx)]
 
 
+
+    def collect_np_complement_forms(self):
+        
+        """ """
+        
+        for i, d in enumerate(self.documents):
+            for j, sent in enumerate([s for s in d.sents]):
+                idx = [t.orth_ for t in sent].index(sent.root.orth_) + 1
+                try:
+                    self.np_complement_forms[
+                            "-".join([t.dep_ for t in sent[idx:]])
+                            ].append((sent.root, i, j, idx))
+                except KeyError:
+                    self.np_complement_forms[
+                            "-".join([t.dep_ for t in sent[idx:]])
+                            ] = [(sent.root, i, j, idx)]
+
+
+
+    def similar_subj_np(self, common_form):
+        
+        """ """
+
+        subjects = {}
+        if common_form in self.common_subj_forms:
+            for tup in [
+                            t for t
+                            in self.subj_np_forms[common_form]
+                            if t[0].pos_ == "VERB"
+                        ]:
+                doc = self.documents[tup[1]]
+                subjects[tup] = [snt for snt in doc.sents][tup[2]][:tup[3]]
+        return subjects
+
+
+    def similar_np_complements(self, common_form):
+        
+        """ """
+
+        complements = {}
+        if common_form in self.common_complement_forms:
+            for tup in [
+                            t for t
+                            in self.np_complement_forms[common_form]
+                            if t[0].pos_ == "VERB"
+                        ]:
+                doc = self.documents[tup[1]]
+                complements[tup] = [snt for snt in doc.sents][tup[2]][:tup[3]]
+        return complements
+ 
+
+    @property
+    def common_subj_forms(self):
+        return [
+                k for k
+                in self.subj_np_forms.keys()
+                if len(self.subj_np_forms[k]) > 1
+               ]
+
+    @property
+    def common_complement_forms(self):
+        return [
+                k for k
+                in self.np_complement_forms.keys()
+                if len(self.np_complement_forms[k]) > 1
+               ]
+        
+    
     def __repr__(self):
         return "<DocumentCatalog: {}>".format(self.created_at)
 
@@ -760,7 +846,7 @@ def strip_bottoms(documents):
 
     for i, d in enumerate(documents):
         try:
-            end = [s.root.i for s in d.sents if s.root.orth_ == "_"][0]
+            end = [s.root.i for s in d.sents if s.root.orth_ == "_"][0] -2
         except IndexError:
             end = -1
         stripped.append(d[:end].as_doc())
@@ -1057,7 +1143,8 @@ def shuffle_and_merge(documents):
 
 
 def load_or_refresh_ag(topic_list=['Sports', 'Politics']):
-    cached = datetime.datetime.today().strftime("tmp/ag_%Y%m%d.pkl")
+    # cached = datetime.datetime.today().strftime("tmp/ag_%Y%m%d.pkl")
+    cached = "./tmp/ag_20200710.pkl"
     if os.path.isfile(cached):
         with open(cached, "rb") as pkl:
             ag = pickle.load(pkl)
