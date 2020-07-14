@@ -51,7 +51,7 @@ class WikiPerson():
                     if self.canonical_name not in self.bold:
                         self.canonical_name = self.bold[0]
                     break
-        del soup
+            del soup
 
     @property
     def full_name(self):
@@ -123,7 +123,7 @@ class WikiOrg():
                     except:
                         pass
                     break
-        del soup
+            del soup
                     
     def __repr__(self):
         return "<WikiOrg {}>".format(self.canonical_name)
@@ -168,7 +168,7 @@ class WikiGPE():
                     except:
                         pass
                     break
-        del soup
+            del soup
                     
     def __repr__(self):
         return "<WikiGPE {}>".format(self.canonical_name)

@@ -766,6 +766,20 @@ class ExquisiteCorpse():
                 reverse=True
                 )[0]
         print(self.focus)
+        
+        def begin():
+
+            # select the first inital sentence containg the focus (Person)
+            # entity, or selct the shortest topic sentence
+
+            # remember the doc index of the selected topic sentence.
+
+            # scan the topic sentence for additional Person or Organiztion entities
+            # remember the entity and entity head
+        
+            # choose the first sentence containing the focussed entity, beginning
+            # with the the document selected as for the topic sentence 
+            pass
 
 
     def choose_next_sentence(self, frag):
@@ -1263,6 +1277,7 @@ def load_or_refresh_ag(topic_list=['Sports', 'Politics']):
 
         for story in ag.stories:
             # ditch unpicklable
+            # del story.driver
             story.driver = None
             kill_firefox()
 
