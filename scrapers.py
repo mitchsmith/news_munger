@@ -41,9 +41,9 @@ class WikiPerson():
         self.bold = None
         
         if request.status_code == 200:
-            self.soup = BeautifulSoup(request.text, 'html.parser')
-            self.canonical_name = self.soup.find('h1').text
-            for i, p in enumerate(self.soup.findAll('p')):
+            soup = BeautifulSoup(request.text, 'html.parser')
+            self.canonical_name = soup.find('h1').text
+            for i, p in enumerate(soup.findAll('p')):
                 self.bold = [b.text for b in p.findAll('b')]
                 if self.bold:
                     self.found = True
@@ -51,6 +51,7 @@ class WikiPerson():
                     if self.canonical_name not in self.bold:
                         self.canonical_name = self.bold[0]
                     break
+        del soup
 
     @property
     def full_name(self):
@@ -109,9 +110,9 @@ class WikiOrg():
         self.bold = None
         
         if request.status_code == 200:
-            self.soup = BeautifulSoup(request.text, 'html.parser')
-            self.canonical_name = self.soup.find('h1').text
-            for i, p in enumerate(self.soup.findAll('p')):
+            soup = BeautifulSoup(request.text, 'html.parser')
+            self.canonical_name = soup.find('h1').text
+            for i, p in enumerate(soup.findAll('p')):
                 self.bold = [b.text for b in p.findAll('b')]
                 if self.canonical_name and self.canonical_name in self.bold:
                     self.found = True
@@ -122,6 +123,7 @@ class WikiOrg():
                     except:
                         pass
                     break
+        del soup
                     
     def __repr__(self):
         return "<WikiOrg {}>".format(self.canonical_name)
@@ -153,9 +155,9 @@ class WikiGPE():
         self.description = None
         self.bold = []       
         if request.status_code == 200:
-            self.soup = BeautifulSoup(request.text, 'html.parser')
-            self.canonical_name = self.soup.find('h1').text
-            for i, p in enumerate(self.soup.findAll('p')):
+            soup = BeautifulSoup(request.text, 'html.parser')
+            self.canonical_name = soup.find('h1').text
+            for i, p in enumerate(soup.findAll('p')):
                 self.bold = [b.text for b in p.findAll('b')]
                 if self.canonical_name and self.canonical_name in self.bold:
                     self.found = True
@@ -166,6 +168,7 @@ class WikiGPE():
                     except:
                         pass
                     break
+        del soup
                     
     def __repr__(self):
         return "<WikiGPE {}>".format(self.canonical_name)
@@ -213,6 +216,8 @@ class Trends(HeavyScraper):
                 in self.driver.find_elements_by_class_name('feed-item')
             ]
         self.driver.close()
+        kill_firefox()
+        del self.driver
     
     @property
     def trends(self):
@@ -278,6 +283,8 @@ class APHeadlines(HeavyScraper):
                     pass
         
         self.driver.close()
+        kill_firefox
+        del self.driver
 
     def __repr__(self):
         return '<APHeadlines object: url={}>'.format(self.url)
@@ -324,7 +331,9 @@ class APArticle(HeavyScraper):
             for s in self.driver.find_elements_by_tag_name("p")
         ]
         self.driver.close()    
-
+        kill_firefox()
+        del self.driver
+ 
     @property
     def title(self):
         return self._title

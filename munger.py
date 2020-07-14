@@ -648,7 +648,7 @@ class DocumentCatalog():
         """ """
         
         for i, d in enumerate(self.documents):
-            for j, sent in enumerate([s for s in d.sents]):
+            for j, sent in enumerate(d.sents):
                 idx = [t.orth_ for t in sent].index(sent.root.orth_)
                 try:
                     self.subj_np_forms[
@@ -666,7 +666,7 @@ class DocumentCatalog():
         """ """
         
         for i, d in enumerate(self.documents):
-            for j, sent in enumerate([s for s in d.sents]):
+            for j, sent in enumerate(d.sents):
                 idx = [t.orth_ for t in sent].index(sent.root.orth_) + 1
                 try:
                     self.np_complement_forms[
@@ -691,7 +691,8 @@ class DocumentCatalog():
                             if t[0].pos_ == "VERB"
                         ]:
                 doc = self.documents[tup[1]]
-                subjects[tup] = [snt for snt in doc.sents][tup[2]][:tup[3]]
+                #subjects[tup] = [snt for snt in doc.sents][tup[2]][:tup[3]]
+                subjects[tup] = next(islice(doc.sents, tup[2]))[:tup[3]]
         return subjects
 
 
@@ -707,7 +708,8 @@ class DocumentCatalog():
                             if t[0].pos_ == "VERB"
                         ]:
                 doc = self.documents[tup[1]]
-                complements[tup] = [snt for snt in doc.sents][tup[2]][:tup[3]]
+                complements[tup] = next(islice(doc.sents, tup[2]))[:tup[3]]
+
         return complements
  
 
@@ -1233,8 +1235,8 @@ def shuffle_and_merge(documents):
 
 
 def load_or_refresh_ag(topic_list=['Sports', 'Politics']):
-    # cached = datetime.datetime.today().strftime("tmp/ag_%Y%m%d.pkl")
-    cached = "./tmp/ag_20200710.pkl"
+    cached = datetime.datetime.today().strftime("tmp/ag_%Y%m%d.pkl")
+    # cached = "./tmp/ag_20200710.pkl"
     if os.path.isfile(cached):
         with open(cached, "rb") as pkl:
             ag = pickle.load(pkl)
@@ -1262,10 +1264,11 @@ def load_or_refresh_ag(topic_list=['Sports', 'Politics']):
         for story in ag.stories:
             # ditch unpicklable
             story.driver = None
+            kill_firefox()
 
         with open(cached, "wb") as pkl:
             pickle.dump(ag, pkl)
-        
+    
     return ag
 
 
@@ -1289,6 +1292,7 @@ docs = []
 dateline_pattern = re.compile(r"^([A-Z][A-Z ,][^—]*?— )", flags=re.MULTILINE)
 for i, story in enumerate(ag.stories):
     text = "\n".join(story.content)
+    dateline = None
     try:
         dateline = dateline_pattern.search(text)[0]
     except:
@@ -1299,6 +1303,9 @@ for i, story in enumerate(ag.stories):
     docs[i]._.dateline = dateline
     docs[i]._.timestamp = story.timestamp
 
+catalog = DocumentCatalog(strip_bottoms(docs))
+del ag
+del docs
 
 # Unit Tests #
 
