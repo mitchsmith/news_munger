@@ -8,6 +8,7 @@ scraped web pages.
 
 import os
 import re
+import random
 import datetime
 import time
 import json
@@ -16,8 +17,9 @@ import spacy
 import lemminflect
 from spacy.lang.en import English
 from spacy.tokens import Doc, Span, Token
-from spacy.matcher import Matcher, PhraseMatcher
+from spacy.matcher import Matcher
 from collections import deque
+from itertools import islice
 from scrapers import Trends, Aggregator, APHeadlines, APArticle
 from scrapers import WikiPerson, WikiOrg, WikiGPE
 from helpers import find_duplicates, kill_firefox
@@ -677,7 +679,7 @@ class DocumentCatalog():
 
 
 
-    def similar_subj_np(self, common_form):
+    def similar_subj_nps(self, common_form):
         
         """ """
 
@@ -747,16 +749,104 @@ class ExquisiteCorpse():
 
     def __init__(self, name=None, *args, **kwargs):
         self.name = name
+        self.title = None
+        self.sentences =[]
+        self.fragments = []
 
+        if "docs" in kwargs.keys():
+            pass
+        elif not catalog.people:
+            catalog.collect_people()
+
+        self.focus = sorted(
+                catalog.people,
+                key=lambda p: len(p.appears_in),
+                reverse=True
+                )[0]
+        print(self.focus)
+
+
+    def choose_next_sentence(self, frag):
+        pass
+    
     def __repr__(self):
         return "<ExquisiteCorpse: {}>".format(self.name)
 
 
-  
+
+
+"""
+for i, d in enumerate(catalog.documents):
+    for j, s in enumerate(d.sents):
+        if s.root.lemma_ == "say":
+            idx = [t.orth_ for t in s].index(s.root.orth_) + 1
+            print("... {} {}".format(s.root, s[idx+1:]))
+
+
+for f in catalog.common_subj_forms:
+    subs = []
+    preds = []
+    for tup in catalog.similar_subj_nps(f):
+        print("{} {}".format([s for s in catalog.documents[tup[1]].sents][0][:tup[3],tup[0]))
+
+
+        subs.append((tup[0], [s for s in catalog.documents[tup[1]].sents][0][:tup[3]]))
+        preds.append((tup[0], [s for s in catalog.documents[tup[1]].sents][0][tup[3]+1:]))
+    # print(sorted(set(subs)))
+    # print(sorted(set(preds)))
+    for s in sorted(set(subs)):
+        for p in sorted(set(preds)):
+            print ("{} {} {}".format(s[1], s[0].orth_, p[1]))
+        print("...")
+
+
+swapable = catalog.similar_subj_nps(catalog.common_subj_forms[1])
+sents = []
+for k in swapable.keys():
+    sent = [s for s in catalog.documents[k[1]].sents][k[2]]
+    sents.append((k, sent))
+
+for i, s in enumerate(swapable):
+    for j in range(1,len(sents)):
+        sent = sents[(i + j) % len(sents)]
+        pred = sents[i][1][:s[3]+1]
+        comp = sent[1][sent[0][3]+1:]
+        print(" ".join([pred.text, comp.text]))
+        pred = sents[i][1][:s[3]]
+        comp = sent[1][sent[0][3]:]
+        print(" ".join([pred.text, comp.text]))
+
+
+
+
+"""
 
 
 
 # Functions
+
+def sents_from_common_form(common_form):
+    swapable = catalog.similar_subj_nps(common_form)
+    sents = []
+    for k in swapable.keys():
+        sent = [s for s in catalog.documents[k[1]].sents][k[2]]
+        sents.append((k, sent))
+    new_sents = []
+    for i, s in enumerate(swapable):
+        for j in range(1,len(sents)):
+            sent = sents[(i + j) % len(sents)]
+            pred = sents[i][1][:s[3]+1]
+            comp = sent[1][sent[0][3]+1:]
+            new_sents.append(" ".join([pred.text, comp.text]))
+            if len(sents) > 2:
+                pred = sents[i][1][:s[3]]
+                comp = sent[1][sent[0][3]:]
+                new_sents.append(" ".join([pred.text, comp.text]))
+    
+    return new_sents
+
+
+
 
 def interleave_sentences(doc1, doc2):
     
@@ -1196,10 +1286,17 @@ ag = load_or_refresh_ag(topic_list=[
                         )
 
 docs = []
+dateline_pattern = re.compile(r"^([A-Z][A-Z ,][^—]*?— )", flags=re.MULTILINE)
 for i, story in enumerate(ag.stories):
-    docs.append((nlp("\n".join(story.content))))
+    text = "\n".join(story.content)
+    try:
+        dateline = dateline_pattern.search(text)[0]
+    except:
+        pass
+    docs.append((nlp(dateline_pattern.sub("", text))))
     docs[i]._.title = story.title
     docs[i]._.byline = story.byline
+    docs[i]._.dateline = dateline
     docs[i]._.timestamp = story.timestamp
 
 
