@@ -752,6 +752,7 @@ class ExquisiteCorpse():
     def __init__(self, name=None, *args, **kwargs):
         self.name = name
         self.title = None
+        self.topic_sentence = None
         self.sentences =[]
         self.fragments = []
 
@@ -767,19 +768,62 @@ class ExquisiteCorpse():
                 )[0]
         print(self.focus)
         
-        def begin():
+    
+    def begin():
 
-            # select the first inital sentence containg the focus (Person)
-            # entity, or selct the shortest topic sentence
+        # select the first inital sentence containg the focus (Person)
+        # entity, or selct the shortest topic sentence
 
-            # remember the doc index of the selected topic sentence.
+        sentences = []
+        current_subj = None
+        current comp = None
+        current_pivot = None
+        preserve = None
 
-            # scan the topic sentence for additional Person or Organiztion entities
-            # remember the entity and entity head
+
+        for d_tup in ((n, catalog.documents[n]) for n in self.focus.appears_in):
+            sentences.append((d_tup[0], next(islice(d_tup[1].sents, 1)).as_doc()))
+
+        print(sentences)
         
-            # choose the first sentence containing the focussed entity, beginning
-            # with the the document selected as for the topic sentence 
+        for sent in sentences:
+            for p in (e for e in sent[1].ents if e.label_ == "PERSON"):
+                if p.orth_ in self.focus.aka:
+                    self.topic_sentence = sent
+                    preserve = (p.start, p.end, p.orth, p._dep)
+                    break
+
+        if not self.topic_sentence:
+            self.topic_sentence = sorted(sentences, key=lambda s: len(s[1]))[0]
+        
+        if preserve and perserve[0] > sent.root.i:
             pass
+        else:
+            cutoff = [c for c in self.topic_sentence.root.children if c.dep_ != "punct"][-1]
+            pattern = [{"LEMMA":cutoff.lemma_}]
+            matcher = Matcher(nlp.vocab)
+            matcher.add("PivotPoint", pattern, None)
+            for doc in (
+                    catalog.documents(n)
+                    for n
+                    in self.focus.appears_in
+                    if n != self.topic_sentence[0]
+                    ):
+                for sent in doc.sents:
+                    try:
+                        mid, lidx, ridx = matcher(sent)[0]
+                        if mid:
+                            sentences.append(sent.as_doc())
+                            break
+                    except:
+                        continue
+
+
+        # scan the topic sentence for additional Person or Organiztion entities
+        # remember the entity and entity head
+    
+        # choose the first sentence containing the focussed entity, beginning
+        # with the the document selected as for the topic sentence 
 
 
     def choose_next_sentence(self, frag):
