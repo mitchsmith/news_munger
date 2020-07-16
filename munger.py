@@ -746,40 +746,37 @@ class MadLib():
 
 
 class ExquisiteCorpse():
-    
     """  """
-
     def __init__(self, name=None, *args, **kwargs):
         self.name = name
+        self.sentences = []
+        self.fragments = []
         self.title = None
         self.topic_sentence = None
-        self.sentences =[]
-        self.fragments = []
-
+        self.current_sentence = None
+        self.current_subj = None
+        self.current_comp = None
+        self.current_pivot = None
+        self.preserve = None
         if "docs" in kwargs.keys():
             pass
         elif not catalog.people:
             catalog.collect_people()
-
         self.focus = sorted(
                 catalog.people,
                 key=lambda p: len(p.appears_in),
                 reverse=True
                 )[0]
         print(self.focus)
-        
     
-    def begin():
+    def begin(self):
 
-        # select the first inital sentence containg the focus (Person)
-        # entity, or selct the shortest topic sentence
+        """
+        select the first inital sentence containg the focus (Person)
+        entity, or selct the shortest topic sentence.
+        """
 
         sentences = []
-        current_subj = None
-        current comp = None
-        current_pivot = None
-        preserve = None
-
 
         for d_tup in ((n, catalog.documents[n]) for n in self.focus.appears_in):
             sentences.append((d_tup[0], next(islice(d_tup[1].sents, 1)).as_doc()))
@@ -787,36 +784,44 @@ class ExquisiteCorpse():
         print(sentences)
         
         for sent in sentences:
+            if self.fragments:
+                break
             for p in (e for e in sent[1].ents if e.label_ == "PERSON"):
-                if p.orth_ in self.focus.aka:
+                if p.text in self.focus.aka:
                     self.topic_sentence = sent
-                    preserve = (p.start, p.end, p.orth, p._dep)
+                    self.current_sentence = sent
+                    # idx = next(islice(self.topic_sentence[1].sents, 1)).root.i + 1
+                    preserve = (p.start, p.end, p.text, p.root.dep_)
+                    self.current_pivot = [t for t
+                          in next(islice(sent[1].sents, 1)).root.rights
+                          ][0]
+                    idx = self.current_pivot.i
+                    if p.end > idx:
+                        self.fragments.append(self.topic_sentence[1][idx:])
+                    else:
+                        self.fragments.append(self.topic_sentence[1][:idx+1])
                     break
+                
+        if not self.current_sentence:
+            self.current_sentence = sorted(sentences, key=lambda s: len(s[1]))[0]
 
-        if not self.topic_sentence:
-            self.topic_sentence = sorted(sentences, key=lambda s: len(s[1]))[0]
-        
-        if preserve and perserve[0] > sent.root.i:
-            pass
-        else:
-            cutoff = [c for c in self.topic_sentence.root.children if c.dep_ != "punct"][-1]
-            pattern = [{"LEMMA":cutoff.lemma_}]
-            matcher = Matcher(nlp.vocab)
-            matcher.add("PivotPoint", pattern, None)
-            for doc in (
-                    catalog.documents(n)
+        pattern = [{"LEMMA": self.current_pivot.lemma_}]
+        matcher = Matcher(nlp.vocab)
+        matcher.add("PivotPoint", [pattern], None)
+        for doc in (
+                    catalog.documents[n]
                     for n
                     in self.focus.appears_in
-                    if n != self.topic_sentence[0]
+                    if n != self.current_sentence[0]
                     ):
-                for sent in doc.sents:
-                    try:
-                        mid, lidx, ridx = matcher(sent)[0]
-                        if mid:
-                            sentences.append(sent.as_doc())
-                            break
-                    except:
-                        continue
+            for sent in doc.sents:
+                try:
+                    mid, lidx, ridx = matcher(sent)[0]
+                    if mid:
+                        self.fragments.append(sent.as_doc()[lidx:])
+                        break
+                except:
+                    continue
 
 
         # scan the topic sentence for additional Person or Organiztion entities
@@ -1293,8 +1298,8 @@ def shuffle_and_merge(documents):
 
 
 def load_or_refresh_ag(topic_list=['Sports', 'Politics']):
-    cached = datetime.datetime.today().strftime("tmp/ag_%Y%m%d.pkl")
-    # cached = "./tmp/ag_20200710.pkl"
+    # cached = datetime.datetime.today().strftime("tmp/ag_%Y%m%d.pkl")
+    cached = "./tmp/ag_20200715.pkl"
     if os.path.isfile(cached):
         with open(cached, "rb") as pkl:
             ag = pickle.load(pkl)
