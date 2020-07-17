@@ -753,6 +753,7 @@ class ExquisiteCorpse():
         self.fragments = []
         self.title = None
         self.topic_sentence = None
+        self.current_doc_index = None
         self.current_sentence = None
         self.current_subj = None
         self.current_comp = None
@@ -808,8 +809,8 @@ class ExquisiteCorpse():
         pattern = [{"LEMMA": self.current_pivot.lemma_}]
         matcher = Matcher(nlp.vocab)
         matcher.add("PivotPoint", [pattern], None)
-        for doc in (
-                    catalog.documents[n]
+        for index, doc in (
+                    (n, catalog.documents[n])
                     for n
                     in self.focus.appears_in
                     if n != self.current_sentence[0]
@@ -819,19 +820,34 @@ class ExquisiteCorpse():
                     mid, lidx, ridx = matcher(sent)[0]
                     if mid:
                         self.fragments.append(sent.as_doc()[lidx:])
+                        self.current_doc_index = index
                         break
                 except:
                     continue
+            
+            if len(self.fragments) >= 2:
+                new_sent = nlp(
+                        "".join(
+                                [
+                                corpse.fragments[0].text_with_ws,
+                                corpse.fragments[1][1:].text_with_ws
+                                ]
+                               )
+                        )
+                self.sentences.append(self.fix_pronouns(new_sent))
+                break
 
-
-        # scan the topic sentence for additional Person or Organiztion entities
-        # remember the entity and entity head
     
-        # choose the first sentence containing the focussed entity, beginning
-        # with the the document selected as for the topic sentence 
-
-
-    def choose_next_sentence(self, frag):
+    def fix_pronouns(self, doc):
+        return doc
+    
+    def choose_next_sentence(self, dindex=None, sindex=None):
+        self.fragments = []
+        # children = [c for c in next(islice(catalog.documents[8].sents, 2, None)).root.children if c.dep_ != 'punct']
+        # children[random.randrange(1,len(children))]
+        pass
+    
+    def complete_next_sentence(self, frag):
         pass
     
     def __repr__(self):
