@@ -829,8 +829,8 @@ class ExquisiteCorpse():
                 new_sent = nlp(
                         "".join(
                                 [
-                                corpse.fragments[0].text_with_ws,
-                                corpse.fragments[1][1:].text_with_ws
+                                self.fragments[0].text_with_ws,
+                                self.fragments[1][1:].text_with_ws
                                 ]
                                )
                         )
@@ -842,10 +842,54 @@ class ExquisiteCorpse():
         return doc
     
     def choose_next_sentence(self, dindex=None, sindex=None):
+        if len(self.sentences) >= 8:
+            # Need to include failsafe here?
+            pass 
+        
         self.fragments = []
-        # children = [c for c in next(islice(catalog.documents[8].sents, 2, None)).root.children if c.dep_ != 'punct']
-        # children[random.randrange(1,len(children))]
-        pass
+        if dindex:
+            self.current_doc_index = dindex
+            doc = catalog.document[dindex]
+        else:
+            self.current_doc_index = self.current_sentence[0]
+            doc = catalog.documents[self.current_sentence[0]]
+
+        if sindex:
+            self.current_sentence = (sindex, next(islice(doc.sents, sindex, None)))
+        else:
+            for i, s in enumerate(doc.sents):
+                p = [
+                        e for e in s.ents
+                        if e and e.label_ == "PERSON"
+                        and e.text not in corpse.focus.aka
+                        ]
+                if p:
+                    try:
+                        self.focus = next(islice(
+                            (name for name in catalog.people if p.text in name.aka),
+                            0,
+                            None
+                            ))
+                    except:
+                        pass
+                    self.current_sentence = (i, s)
+                    break
+        
+        children = [
+                c for c
+                in next(islice(
+                    catalog.documents[self.current_doc_index].sents,
+                    self.current_sentence[0],
+                    None
+                    )).root.children
+                if c.dep_ != 'punct'
+                ]
+        self.current_pivot = children[random.randrange(1,len(children))]
+        self.fragments.append(
+                self.current_sentence[1][:
+                    self.current_pivot.i - self.current_sentence[1].start + 1
+                    ]
+                )
     
     def complete_next_sentence(self, frag):
         pass
@@ -1314,8 +1358,8 @@ def shuffle_and_merge(documents):
 
 
 def load_or_refresh_ag(topic_list=['Sports', 'Politics']):
-    # cached = datetime.datetime.today().strftime("tmp/ag_%Y%m%d.pkl")
-    cached = "./tmp/ag_20200715.pkl"
+    cached = datetime.datetime.today().strftime("tmp/ag_%Y%m%d.pkl")
+    # cached = "./tmp/ag_20200715.pkl"
     if os.path.isfile(cached):
         with open(cached, "rb") as pkl:
             ag = pickle.load(pkl)
