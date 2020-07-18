@@ -861,7 +861,7 @@ class ExquisiteCorpse():
                 p = [
                         e for e in s.ents
                         if e and e.label_ == "PERSON"
-                        and e.text not in corpse.focus.aka
+                        and e.text not in self.focus.aka
                         ]
                 if p:
                     try:
@@ -891,8 +891,62 @@ class ExquisiteCorpse():
                     ]
                 )
     
-    def complete_next_sentence(self, frag):
-        pass
+    def complete_next_sentence(self):
+        sentences = []
+        for doc in (
+                (n, catalog.documents[n])
+                for n
+                in self.focus.appears_in
+                if n != self.current_doc_index
+                ):
+            for i, sentence in enumerate(doc[1].sents):
+                print(doc[0], i)
+                #try:
+                pivots = [
+                    (t.i - sentence.start, t)
+                    for t 
+                    in sentence
+                    if t.lemma_ == self.current_pivot.lemma_
+                    and t.head.dep_ == "ROOT"
+                    ]
+                if self.current_pivot.lemma_ in (p[1].lemma_ for p in pivots):
+                    sentences.append(
+                                        {
+                                        "d": doc[0],
+                                        "i": i,
+                                        "pivots": pivots, 
+                                        "sentence": sentence, 
+                                        "rank": 0,
+                                        }
+                                    )
+        
+        
+        try:
+            fragment = next(islice(
+                (s['sentence'][s['pivots'][-1][0]+1:] for s in sentences),
+                random.randrange(len(sentences)),
+                None
+                ))
+            self.fragments.append(fragment)
+            self.sentences.append(
+                    nlp("".join([f.text_with_ws for f in self.fragments]))
+                    )
+        except ValueError:
+            #self.current_pivot = corpse.current_sentence[1].root
+            #cut = (corpse.current_sentence[1].root.i 
+            #        - corpse.current_sentence[1].start
+            #        + 1
+            #        ) 
+            #
+            #self.fragments = [self.current_sentence[1][:cut]]
+            self.fragments = []
+            self.choose_next_sentence()
+            self.complete_next_sentence()
+        
+        sentences = []
+        self.fragments = []
+
+        #return sentences
     
     def __repr__(self):
         return "<ExquisiteCorpse: {}>".format(self.name)
@@ -909,7 +963,7 @@ for i, d in enumerate(catalog.documents):
 
 
 for f in catalog.common_subj_forms:
-    subs = []
+"    subs = []
     preds = []
     for tup in catalog.similar_subj_nps(f):
         print("{} {}".format([s for s in catalog.documents[tup[1]].sents][0][:tup[3],tup[0]))
@@ -1358,8 +1412,8 @@ def shuffle_and_merge(documents):
 
 
 def load_or_refresh_ag(topic_list=['Sports', 'Politics']):
-    cached = datetime.datetime.today().strftime("tmp/ag_%Y%m%d.pkl")
-    # cached = "./tmp/ag_20200715.pkl"
+    # cached = datetime.datetime.today().strftime("tmp/ag_%Y%m%d.pkl")
+    cached = "./tmp/ag_20200717.pkl"
     if os.path.isfile(cached):
         with open(cached, "rb") as pkl:
             ag = pickle.load(pkl)
