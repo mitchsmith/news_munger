@@ -751,6 +751,7 @@ class ExquisiteCorpse():
         self.name = name
         self.sentences = []
         self.fragments = []
+        self.used = []
         self.title = None
         self.topic_sentence = None
         self.current_doc_index = None
@@ -778,33 +779,35 @@ class ExquisiteCorpse():
         """
 
         sentences = []
-
+        used = None
         for d_tup in ((n, catalog.documents[n]) for n in self.focus.appears_in):
-            sentences.append((d_tup[0], next(islice(d_tup[1].sents, 1)).as_doc()))
+            sentences.append((d_tup[0], 1, next(islice(d_tup[1].sents, 1)).as_doc()))
+            self.current_doc_index = d_tup[0]
 
         print(sentences)
         
         for sent in sentences:
             if self.fragments:
                 break
-            for p in (e for e in sent[1].ents if e.label_ == "PERSON"):
+            for p in (e for e in sent[2].ents if e.label_ == "PERSON"):
                 if p.text in self.focus.aka:
                     self.topic_sentence = sent
                     self.current_sentence = sent
+                    self.used.append(sent)
                     # idx = next(islice(self.topic_sentence[1].sents, 1)).root.i + 1
                     preserve = (p.start, p.end, p.text, p.root.dep_)
                     self.current_pivot = [t for t
-                          in next(islice(sent[1].sents, 1)).root.rights
+                          in next(islice(sent[2].sents, 1)).root.rights
                           ][0]
                     idx = self.current_pivot.i
                     if p.end > idx:
-                        self.fragments.append(self.topic_sentence[1][idx:])
+                        self.fragments.append(self.topic_sentence[2][idx:])
                     else:
-                        self.fragments.append(self.topic_sentence[1][:idx+1])
+                        self.fragments.append(self.topic_sentence[2][:idx+1])
                     break
                 
         if not self.current_sentence:
-            self.current_sentence = sorted(sentences, key=lambda s: len(s[1]))[0]
+            self.current_sentence = sorted(sentences, key=lambda s: len(s[2]))[0]
 
         pattern = [{"LEMMA": self.current_pivot.lemma_}]
         matcher = Matcher(nlp.vocab)
@@ -815,12 +818,13 @@ class ExquisiteCorpse():
                     in self.focus.appears_in
                     if n != self.current_sentence[0]
                     ):
-            for sent in doc.sents:
+            for i, sent in enumerate(doc.sents):
                 try:
                     mid, lidx, ridx = matcher(sent)[0]
                     if mid:
                         self.fragments.append(sent.as_doc()[lidx:])
                         self.current_doc_index = index
+                        used = (index, i, sent)
                         break
                 except:
                     continue
@@ -835,12 +839,40 @@ class ExquisiteCorpse():
                                )
                         )
                 self.sentences.append(self.fix_pronouns(new_sent))
+                self.used.append(used)
+                self.current_sentence = used
                 break
 
     
     def fix_pronouns(self, doc):
         return doc
     
+    def choose_next_document(self):
+        refocus = sorted([
+                    person
+                    for person
+                    in catalog.people
+                    if person.name != self.focus.name
+                ],
+                key=lambda p: len(p.appears_in),
+                reverse=True
+                )[random.randrange(5)]
+        self.focus = refocus
+        choices = [
+                n
+                for n
+                in self.focus.appears_in
+                if n
+                not in [s[0] for s in self.used]
+                ]
+        if len(choices):
+            self.current_doc_index = choices[random.randrange(len(choices))]
+        else:
+            self.current_doc_index = random.randrange(len(catalog.documents))
+
+        return catalog.documents[self.current_doc_index]
+
+
     def choose_next_sentence(self, dindex=None, sindex=None):
         if len(self.sentences) >= 8:
             # Need to include failsafe here?
@@ -851,8 +883,8 @@ class ExquisiteCorpse():
             self.current_doc_index = dindex
             doc = catalog.document[dindex]
         else:
-            self.current_doc_index = self.current_sentence[0]
-            doc = catalog.documents[self.current_sentence[0]]
+            # self.current_doc_index = self.current_sentence[0]
+            doc = self.choose_next_document()
 
         if sindex:
             self.current_sentence = (sindex, next(islice(doc.sents, sindex, None)))
@@ -864,6 +896,8 @@ class ExquisiteCorpse():
                         and e.text not in self.focus.aka
                         ]
                 if p:
+                    if self.used[0] == self.current_doc_index and self.used[1] == i:
+                        continue
                     try:
                         self.focus = next(islice(
                             (name for name in catalog.people if p.text in name.aka),
@@ -872,22 +906,25 @@ class ExquisiteCorpse():
                             ))
                     except:
                         pass
-                    self.current_sentence = (i, s)
+                    self.current_sentence = (self.current_doc_index, i, s)
+                    self.used.append(self.current_sentence)
                     break
         
         children = [
                 c for c
-                in next(islice(
-                    catalog.documents[self.current_doc_index].sents,
-                    self.current_sentence[0],
-                    None
-                    )).root.children
+                #in next(islice(
+                #    catalog.documents[self.current_doc_index].sents,
+                #    self.current_sentence[0],
+                #    None
+                #    )).root.children
+                in self.current_sentence[2].root.children
                 if c.dep_ != 'punct'
+                and c.pos_ != 'PROPN'
                 ]
         self.current_pivot = children[random.randrange(1,len(children))]
         self.fragments.append(
-                self.current_sentence[1][:
-                    self.current_pivot.i - self.current_sentence[1].start + 1
+                self.current_sentence[2][:
+                    self.current_pivot.i - self.current_sentence[2].start + 1
                     ]
                 )
     
