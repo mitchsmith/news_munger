@@ -597,14 +597,13 @@ def find_duplicates(mylist):
     a = sorted(mylist)
     b = sorted(set(mylist))
     d = []
-    if len(a) <= len(b):
+    if len(a) == len(b):
         return d
-    for i, c in enumerate(a):
-        if c != b[i]:
-            d.append(c)
-            if len(a[i+1:]) > len(b[i+1:]):
-                d.extend(find_duplicates(a[i+1:]))
-            break  
+    while a:
+        e = a.pop()
+        if e in a:
+            d.append(e)
+            
     return sorted(set(d))
 
 
