@@ -24,23 +24,44 @@ except ValueError:
     # Reloading pickled
     pass
 
+
+def find_mungeable_sentences(documents):
+    # Fetch all sentence roots
+    s_roots = []
+    [s_roots.extend([s.root for s in d.sents]) for d in catalog.documents]
+    # list all lemmas occurring more than once as sentence roots
+    root_lemmas = find_duplicates([r.lemma_ for r in s_roots])
+    # locate sentences with identical root lemmas by document and sentence index
+    sentences = {k:[] for k in root_lemmas}
+    for i, d in enumerate(catalog.documents):
+        for j, s in enumerate(d.sents):
+            if s.root.lemma_ in root_lemmas:
+                sentences[s.root.lemma_].append((i, j))
+    return sentences
+
+   
+
+
 """
-# Fetch all sentence roots
+say_swaps = {}
+for tup in sentences['say']:
+    sent = next(islice(catalog.documents[tup[0]].sents, tup[1], None))
+    root = sent.root
+    k = tuple([c.dep_ for c in root.children])
+    if k in say_swappable:
+        try:    
+            say_swaps[k].append(tup)
+        except KeyError:
+            say_swaps[k] = [tup]
 
-s_roots = []
-[s_roots.extend([s.root for s in d.sents]) for d in catalog.documents]
+for k in say_swaps.keys():
+    for d, s in say_swaps[k]:
+        sent = next(islice(catalog.documents[d].sents, s, None))
+        print(sent.text_with_ws)
+        print([c.orth_ for c in sent.root.children])
+    print("\n")
+    
 
-# list all lemmas occurring more than once as sentence roots
-
-root_lemmas = find_duplicates([r.lemma_ for r in s_roots])
-
-# locate sentences with identical root lemmas by document and sentence index
-
-sentences = {k:[] for k in root_lemmas}
-for i, d in enumerate(catalog.documents):
-    for j, s in enumerate(d.sents):
-        if s.root.lemma_ in root_lemmas:
-            sentences[s.root.lemma_].append((i, j))
 
 # print the available sentences
 
@@ -63,7 +84,7 @@ for lemma in sentences.keys():
                     swaps[0][:swaps[0].root.i - swaps[0].start + 1].text_with_ws,
                     swaps[1][swaps[1].root.i - swaps[1].start + 1:].text_with_ws
                     ])
-            )
+           )
     print(
             "".join([
                     swaps[1][:swaps[1].root.i - swaps[1].start + 1].text_with_ws,
