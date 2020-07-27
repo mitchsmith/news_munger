@@ -39,10 +39,306 @@ def find_mungeable_sentences(documents):
                 sentences[s.root.lemma_].append((i, j))
     return sentences
 
-   
 
+sentences = find_mungeable_sentences(catalog.documents)
+popular_roots = sorted(sentences.keys(), key=lambda k: len(sentences[k]), reverse=True)   
+
+
+def picka_sentence(documents, doc_id=None, **kwargs):
+    
+    """
+
+    """
+    
+    if doc_id:
+        doc_list = [doc_id]
+    elif 'doc_list' in kwargs.keys():
+        doc_list = kwargs['doc_list']
+    elif 'focus' in kwargs.keys():
+        doc_list = kwargs['focus'].appears_in
+    else:
+        doc_list = [n for n in range(len(documents))]
+    if 'exclude' in kwargs.keys():
+        exclude = kwargs['exclude']
+    else:
+        exclude = []
+    if 'lemma' in kwargs.keys():
+        lemma = kwargs['lemma']
+        if lemma in popular_roots:
+            s_list = list(set(sentences[lemma]) - set(exclude))
+            if s_list:
+                random.shuffle(s_list)
+                d, s = s_list[0]
+                sent = next(islice(documents[d].sents, s, None))
+                return (d, s, lemma, sent)
+            else:
+                # check verbnet
+                vnids = verbnet.classids(lemma)
+                alternatives = []
+                for vnid in vnids:
+                    for lem in verbnet.lemmas(vnid):
+                        if lem in popular_roots:
+                            alternatives.extend(sentences[lem])
+                if alternatives:
+                    # use these to continue
+                    d, s = alternatives[random.randrange(len(alternatives))]
+                    sent = next(islice(catalog.documents[d].sents, s, None))
+                    lemma = sent.root.lemma_
+                    return (d, s, lemma, sent)
+                return ()
+    d = doc_list[random.randrange(len(doc_list))]
+    s_list = list(
+                    set(
+                        [
+                        (d, s)
+                        for s
+                        in range(len([x for x in documents[d].sents]))
+                        ]
+                      ) - set(exclude)
+                 )
+    random.shuffle(s_list)
+    s = s_list[0][1]
+    sent = next(islice(documents[d].sents, s, None))
+    lemma = sent.root.lemma_
+    return (d, s, lemma, sent)
+
+
+def munge_children(sentences):
+    """ not implemented"""
+    return sentences
+
+
+def munge_exquisite(sentence_a=None, sentence_b=None):
+    if sentence_a:
+        s1 = sentence_a
+        if sentence_b:
+            s2 = sentence_b
+        else:
+            s2 = picka_sentence(
+                    catalog.documents,
+                    lemma=s1[2],
+                    exclude=[(s1[0], s1[1])]
+                    )
+    else:
+        s1 = picka_sentence(catalog.documents)
+        s2 = picka_sentence(
+                catalog.documents,
+                lemma=s1[2],
+                exclude=[(s1[0], s1[1])]
+                )
+    
+    if s2[2] in ['say', 'be']:
+        return munge_children([s1, s2])
+    
+    lefts = []
+    rights = []
+    root_text = "{} ".format(s2[-1].root._.inflect(s1[-1].root.tag_))
+    for left in s1[-1].root.lefts:
+        lefts.append("".join([t.text_with_ws for t in left.subtree]))
+    for right in s2[-1].root.rights:
+        rights.append("".join([t.text_with_ws for t in right.subtree]))
+    return nlp(
+            "{}{}{}".format("".join(lefts), root_text, "".join(rights))
+            )
+
+
+
+
+
+
+
+
+
+
+
+
+#######################################################################
+## Experiments
+#######################################################################
 
 """
+Working out how to parse "say" sentences
+"""
+
+l_say = []
+r_say = []
+for d, i in sentences['say']:
+    lefts = []
+    rights = []
+    s = next(islice(catalog.documents[d].sents, i, None))
+    for left in s.root.lefts:
+        for t in left.subtree:
+            lefts.append(t.dep_)
+    for right in s.root.rights:
+        for t in right.subtree:
+            rights.append(t.dep_)
+    l_say.append(tuple(lefts))
+    r_say.append(tuple(rights))
+
+lrepeats = find_duplicates(l_say)
+
+for d, i in sentences['say']:
+    s = next(islice(catalog.documents[d].sents, i, None))
+    lefts = []
+    for left in s.root.lefts:
+        for t in left.subtree:
+            lefts.append(t.dep_)
+    if tuple(lefts[:2]) in lrepeats:
+        print(s.text_with_ws)
+        print([t.dep_ for t in s])
+        print("\n+++\n")
+
+
+#########################################################################
+
+
+
+
+
+
+lefts = {}
+for lemma in popular_roots:
+    for tup in sentences[lemma]:
+        sent = next(islice(catalog.documents[tup[0]].sents, tup[1], None))
+        for left in sent.root.lefts:
+            try:
+                lefts[lemma].append([t for t in left.subtree])
+            except KeyError:
+                lefts[lemma] = [[t for t in left.subtree]]
+
+
+rights = {}
+for lemma in popular_roots:
+    for tup in sentences[lemma]:
+        sent = next(islice(catalog.documents[tup[0]].sents, tup[1], None))
+        for right in sent.root.rights:
+            try:
+                rights[lemma].append([t for t in right.subtree])
+            except KeyError:
+                rights[lemma] = [[t for t in right.subtree]]
+
+
+for k in lefts.keys():
+    print("lemma: {}".format(k))
+    for left in lefts[k]:
+        print("".join([t.text_with_ws for t in left]))
+    print("\n---\n")
+
+def show_lefts(k):
+    for left in lefts[k]:
+        print("".join([t.text_with_ws for t in left]), [t.dep_ for t in left])
+
+def show_rights(k):
+    for right in rights[k]:
+        print("".join([t.text_with_ws for t in right]), [t.dep_ for t in right])
+
+
+for vnclassid in verbnet.classids('admire'):
+    vnclass = verbnet.vnclass(vnclassid)
+    for themerole in vnclass.findall('THEMROLES/THEMROLE'):
+        print(themerole.attrib['type']),
+        for selrestr in themrole.findall('SELRESTRS/SELRESTR'):
+            print("[{}{}]".format(selrestr.attrib)),
+
+        print()
+
+
+for i, d in enumerate(catalog.documents):
+    for j, s in enumerate(d.sents):
+        vnids = verbnet.classids(s.root.lemma_)
+        for vnid in vnids:
+            print("root: {}, vn ID: {}".format(s.root.lemma_, vnid))
+            for lem in verbnet.lemmas(vnid):
+                if lem in popular_roots:
+                    print(verbnet.lemmas(vnid))
+                    break
+        print()
+
+       
+
+
+def next_exquisite(idx):
+    docpool.append(idx)
+    s1 = next(islice(catalog.documents[idx[0]].sents, idx[1], None))
+    root = s1.root
+
+    if s1.root.lemma_ in popular_roots:
+        # go with it
+        altroot = None
+        idxlist = [s for s in sentences[s1.root.lemma_] if s not in docpool]
+        idx = idxlist[random.randrange(len(idxlist))]
+        s2 = next(islice(catalog.documents[idx[0]].sents, idx[1], None))
+    else:
+        # check verbnet
+        vnids = verbnet.classids(s1.root.lemma_)
+        alternatives = []
+        for vnid in vnids:
+            for lem in verbnet.lemmas(vnid):
+                if lem in popular_roots:
+                    alternatives.extend(sentences[lem])
+        if alternatives:
+            # use these to continue
+            idx = alternatives[random.randrange(len(alternatives))]
+            s2 = next(islice(catalog.documents[idx[0]].sents, idx[1], None))
+            altroot = s2.root
+            docpool.append(idx)
+        else:
+            # pick a different sentence
+            idx = (idx[0], idx[1] + 1)
+            return next_exquisite(idx)
+        
+    if altroot:
+        root_text = "{} ".format(altroot._.inflect(root.tag_))
+    else:
+        root_text = root.text_with_ws
+    
+    left_text = "".join([
+                    "".join([
+                            t.text_with_ws
+                            for t
+                            in left.subtree
+                            ])
+                    for left
+                    in s1.root.lefts
+                    ])
+    right_text = "".join([
+                    "".join([
+                            t.text_with_ws
+                            for t
+                            in right.subtree
+                            ])
+                    for right
+                    in s2.root.rights
+                    ])
+
+    return nlp("{}{}{}".format(left_text, root_text, right_text))
+
+def next_s():
+    d = [t[0] for t in docpool][random.randrange(len(docpool))]
+    s = random.choice(
+                [
+                i for i in range(len([n for n in catalog.documents[d].sents]))
+                if (d, i) not in docpool
+                ]
+            )
+    return (d, s)
+
+"""
+1) begin with a given sentence
+2) note it's indexes
+3) root in popular_roots?
+    3 a) Yes -> step 4
+    3 b) No -> find alterntives
+    3 c) locate sents with roots having roots in the same verbnet class as (a)
+4) randomly select a sentence with a similar root; append indexes to doc_pool
+5) join seected sentences (munge_children(s1,s2)
+6) select sentence according to the alternation:
+    a1 + rand; a2 + rand; rand from chosen docs + rand ...
+    such that each phase takes a random s from the pool of docs (excluding used sents) 
+    thet includes the original (a) doc, and those use for the previous completions
+7) repeat previous steps until desired n-1 is reached
+8) repeat step 1 forward 1 time using the final sentence from doc (a)
+
 say_swaps = {}
 for tup in sentences['say']:
     sent = next(islice(catalog.documents[tup[0]].sents, tup[1], None))
@@ -130,7 +426,6 @@ roots
     if len(approved_pivots(s.root.children)) > 1
 ]
 
-"""
 
 class Corpse():
     
@@ -151,10 +446,9 @@ class Corpse():
     
     def begin(self):
 
-        """
-        select the first inital sentence containg the focus (Person)
-        entity, or selct the shortest topic sentence.
-        """
+        #select the first inital sentence containg the focus (Person)
+        #entity, or selct the shortest topic sentence.
+        
         self.fragments = []
         sentences = []
         pivots = []
@@ -309,7 +603,7 @@ class Corpse():
     def __repr__(self):
         return "<ExquisiteCorpse: {}>".format(self.name)
 
-       
+"""       
         
 
 
