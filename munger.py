@@ -13,8 +13,10 @@ import datetime
 import time
 import json
 import pickle
+import nltk
 import spacy
 import lemminflect
+from nltk.corpus import verbnet
 from spacy.lang.en import English
 from spacy.tokens import Doc, Span, Token
 from spacy.matcher import Matcher

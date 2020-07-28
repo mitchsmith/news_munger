@@ -78,7 +78,7 @@ def picka_sentence(documents, doc_id=None, **kwargs):
                 for vnid in vnids:
                     for lem in verbnet.lemmas(vnid):
                         if lem in popular_roots:
-                            alternatives.extend(sentences[lem])
+                             alternatives.extend(sentences[lem])
                 if alternatives:
                     # use these to continue
                     d, s = alternatives[random.randrange(len(alternatives))]
@@ -103,9 +103,38 @@ def picka_sentence(documents, doc_id=None, **kwargs):
     return (d, s, lemma, sent)
 
 
-def munge_children(sentences):
-    """ not implemented"""
-    return sentences
+def categorize_say(sentences):
+    """ not implemented """
+    catagories = {'punct': [], 'lshort': [], 'other': []}
+    for s in sentences:
+        lefts = []
+        rights = []
+        for left in s[-1].root.lefts:
+            lefts.extend([t for t in left.subtree])
+        for right in s[-1].root.rights:
+            rights.extend([t for t in right.subtree])
+        if lefts[0].dep_ == "punct":
+            catagories['punct'].append(s)
+        elif len(lefts) <= 4:
+            catagories['lshort'].append(s)
+        else:
+            catagories['other'].append(s)
+
+    return catagories
+
+
+def munge_saying(sentence):
+    if sentence[3][0].tag_ == "``":
+        # begins with a quotation
+        pattern = re.compile(r"^(“)([^”]+)([,\.]”)(.*)$")
+        tmp = nlp(pattern.sub(r"\2.", sentence[3].text))
+        s = next(islice(tmp.sents, 0, None))
+        repl = munge_exquisite((None, None, s.root.lemma_, s))
+        if type(repl) == Doc:
+            new = pattern.sub(r"\1{}\3\4".format(repl), sentence[3].text_with_ws)
+            print(sentence[3].text_with_ws)
+            print(new)
+
 
 
 def munge_exquisite(sentence_a=None, sentence_b=None):
@@ -155,6 +184,20 @@ def munge_exquisite(sentence_a=None, sentence_b=None):
 #######################################################################
 ## Experiments
 #######################################################################
+
+pattern = re.compile(r"^(“)([^”]+)([,\.]”)(.*)$")
+
+for sentence in cats['punct']:
+    tmp = nlp(pattern.sub(r"\2.", sentence[3].text_with_ws))
+    s = next(islice(tmp.sents, 0, None))
+    repl = munge_exquisite((None, None, s.root.lemma_, s))
+    if type(repl) == Doc:
+        new = pattern.sub(r"\1{}\3\4".format(repl), sentence[3].text_with_ws)
+        print(sentence[3].text_with_ws)
+        print(new)
+        print()
+
+       
 
 """
 Working out how to parse "say" sentences
