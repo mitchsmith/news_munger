@@ -35,31 +35,6 @@ except ValueError:
 
 ## Classes ##
 
-class MadLib(Munger):
-    
-    """  """
-
-    def build(self):
-        pass
-        
-
-    def __repr__(self):
-        return "<MadLib: {}>".format(self.headline)
-
-
-class ExquisiteCorpse(Munger):
-    
-    """  """
-
-    def build(self):
-        pass
-        
-
-    def __repr__(self):
-        return "<ExquisiteCorpse: {}>".format(self.headline)
-
-
-
 
 class Munger():
 
@@ -212,5 +187,30 @@ class Munger():
     
     def __repr__(self):
         return "<Munger: {}>".format(self.headline)
+
+
+class MadLib(Munger):
+    
+    """  """
+
+    def build(self):
+        pass
+        
+
+    def __repr__(self):
+        return "<MadLib: {}>".format(self.headline)
+
+
+class ExquisiteCorpse(Munger):
+    
+    """  """
+
+    def build(self):
+        pass
+        
+
+    def __repr__(self):
+        return "<ExquisiteCorpse: {}>".format(self.headline)
+
 
 
