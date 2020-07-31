@@ -44,6 +44,8 @@ except ValueError:
 # Classes
 
 
+
+
 class Munger():
 
     def __init__(self, documents):
@@ -56,6 +58,22 @@ class Munger():
                 reverse=True
                 )
         self._sub_sentencess = []
+        self._be_children = {'left': {}, 'right': {}}
+        for i, j in self._sentences['be']:
+            s = next(islice(self._documents[i].sents, j, None))
+            for left in s.root.lefts:
+                k = left.dep_
+                if k in self._be_children['left'].keys():
+                    self._be_children['left'][k].append([t for t in left.subtree])
+                elif k != 'punct':
+                    self._be_children['left'][k] = [[t for t in left.subtree]]
+            for right in s.root.rights:
+                k = right.dep_
+                if k in self._be_children['right'].keys():
+                    self._be_children['right'][k].append([t for t in right.subtree])
+                elif k != 'punct':
+                    self._be_children['right'][k] = [[t for t in right.subtree]]
+
 
     def build(self):
         
@@ -195,7 +213,6 @@ class Munger():
     
     def __repr__(self):
         return "<Munger: {}>".format(self.headline)
-
 
 
 class Person():
