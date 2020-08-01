@@ -79,7 +79,7 @@ class ExquisiteCorpse(Munger):
                 orig = "".join([t.text_with_ws for t in left.subtree])
                 alternates = self._be_children['left'][left.dep_]
         alt = alternates[random.randrange(len(alternates))]
-        repl = "".join([t.text_with_ws for t in alt])
+        repl = "".join([t.text_with_ws for t in alt[2]])
         if not repl:
             repl = " "
         repl = " {}".format(repl)
@@ -91,7 +91,7 @@ class ExquisiteCorpse(Munger):
                 orig = "".join([t.text_with_ws for t in right.subtree])
                 alternates = self._be_children['right'][right.dep_]
         alt = alternates[random.randrange(len(alternates))]
-        repl = "".join([t.text_with_ws for t in alt])
+        repl = "".join([t.text_with_ws for t in alt[2]])
         if not repl:
             repl = " "
         repl = " {}".format(repl)

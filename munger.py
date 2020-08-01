@@ -44,8 +44,6 @@ except ValueError:
 # Classes
 
 
-
-
 class Munger():
 
     def __init__(self, documents):
@@ -64,15 +62,38 @@ class Munger():
             for left in s.root.lefts:
                 k = left.dep_
                 if k in self._be_children['left'].keys():
-                    self._be_children['left'][k].append([t for t in left.subtree])
+                    self._be_children['left'][k].append(
+                            (i , j, [t for t in left.subtree])
+                            )
                 elif k != 'punct':
-                    self._be_children['left'][k] = [[t for t in left.subtree]]
+                    self._be_children['left'][k] = [(i, j, [t for t in left.subtree])]
             for right in s.root.rights:
                 k = right.dep_
                 if k in self._be_children['right'].keys():
-                    self._be_children['right'][k].append([t for t in right.subtree])
+                    self._be_children['right'][k].append(
+                            (i, j, [t for t in right.subtree])
+                            )
                 elif k != 'punct':
-                    self._be_children['right'][k] = [[t for t in right.subtree]]
+                    self._be_children['right'][k] = [(i, j, [t for t in right.subtree])]
+        self._say_children = {'left': {}, 'right': {}}
+        for i, j in self._sentences['say']:
+            s = next(islice(self._documents[i].sents, j, None))
+            for left in s.root.lefts:
+                k = left.dep_
+                if k in self._say_children['left'].keys():
+                    self._say_children['left'][k].append(
+                            (i , j, [t for t in left.subtree])
+                            )
+                elif k != 'punct':
+                    self._say_children['left'][k] = [(i, j, [t for t in left.subtree])]
+            for right in s.root.rights:
+                k = right.dep_
+                if k in self._say_children['right'].keys():
+                    self._say_children['right'][k].append(
+                            (i, j, [t for t in right.subtree])
+                            )
+                elif k != 'punct':
+                    self._say_children['right'][k] = [(i, j, [t for t in right.subtree])]
 
 
     def build(self):
