@@ -957,7 +957,7 @@ def traverse(node):
 
 def load_or_refresh_ag(topic_list=['Sports', 'Politics']):
     # cached = datetime.datetime.today().strftime("tmp/ag_%Y%m%d.pkl")
-    cached = "./tmp/ag_20200717.pkl"
+    cached = "./tmp/ag_20200803.pkl"
     if os.path.isfile(cached):
         with open(cached, "rb") as pkl:
             ag = pickle.load(pkl)
@@ -985,6 +985,7 @@ def load_or_refresh_ag(topic_list=['Sports', 'Politics']):
         for story in ag.stories:
             # ditch unpicklable
             # del story.driver
+            #story.driver.quit()
             story.driver = None
             kill_firefox()
 

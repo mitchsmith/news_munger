@@ -5,7 +5,7 @@ name = "pypi"
 
 [packages]
 nltk = "*"
-"bs4" = "*"
+bs4 = "*"
 selenium = "*"
 bpython = "*"
 spacy = "*"
@@ -16,4 +16,4 @@ google-cloud-texttospeech = "*"
 [dev-packages]
 
 [requires]
-python_version = "3.6"
+python_version = "3.8"

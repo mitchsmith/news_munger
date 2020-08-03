@@ -330,7 +330,8 @@ class APArticle(HeavyScraper):
             [s.location_once_scrolled_into_view, s.text][1]
             for s in self.driver.find_elements_by_tag_name("p")
         ]
-        self.driver.close()    
+        self.driver.close()
+        self.driver.quit()
         kill_firefox()
         del self.driver
  
@@ -439,6 +440,9 @@ class Aggregator():
         """ Fetches a new APArticle and appends its content to stories
         
         ARGS: url
+        pat = re.compile(r"^.*?(storyHTML\"\:\"\\+u003cp>)(.*)(\\+u003cp>p\\>___)?", f
+lags=re.MULTILINE)
+
         """
         
         if re.search(r"apnews", url):
