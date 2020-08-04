@@ -9,7 +9,7 @@ import time
 import datetime
 import json
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, UnicodeDammit
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from collections import deque
@@ -174,6 +174,78 @@ class WikiGPE():
         return "<WikiGPE {}>".format(self.canonical_name)
 
 
+class APArticle():
+    """ AP Article contents fetched and scraped from the specified url."""
+    
+    def __init__(self, url):
+        """ Fetch and scrape news article 
+
+        ARGS:
+            url (required)
+
+        """
+
+        self.url = url
+        self._title = None
+        self._byline = None
+        self._timestamp = None
+        self._content = None
+        request = requests.get(url)
+        if request.status_code == 200:
+            print("Article page loaded from {}".format(self.url))
+            by_pat = re.compile(r"bylines")
+            time_pat = re.compile(r"timestamp", flags=re.IGNORECASE)
+            story_pat = re.compile(
+                    r"^.*?storyHTML\"\:\"\\+u003cp>(.*)\}?",
+                    flags=re.MULTILINE
+                    )
+            soup = BeautifulSoup(request.text)
+            self._title = soup.find('title').text
+            for span in (s for s in soup.find_all('span') if 'class' in s.attrs):
+                for class_name in span.attrs['class']:
+                    if by_pat.search(class_name):
+                        self._byline = span.text
+                    if time_pat.search(class_name):
+                        self._timestamp = span.attrs["data-source"]
+            print("Title: {}".format(self._title))
+            print("Byline: {}".format(self._byline))
+        
+            story_html = re.sub(r'\\+u003c', '<', story_pat.search(soup.text)[1])        
+            soup = BeautifulSoup(story_html)
+            paragraphs = [p.text for p in soup.find_all('p')]
+            end = sorted(
+                    [p for p in paragraphs if re.match(r"^_+$", p)],
+                    key=lambda x: len(x)
+                    )[0]
+            self._content = {
+                    "html": story_html,
+                    "text": "\n".join(paragraphs[:paragraphs.index(end)])
+                    }
+
+
+    @property
+    def title(self):
+        return self._title
+    
+    @property
+    def byline(self):
+        return self._byline
+
+    @property
+    def timestamp(self):
+        return self._timestamp
+
+    @property
+    def content(self):
+        return self._content
+    
+    def __repr__(self):
+        return "<APArticle object: title={}, timestamp={}, url={}>".format(
+                self.title, self.timestamp, self.url
+                )
+
+
+
 ### Selenium based scrapers ###
 
 class HeavyScraper:
@@ -216,6 +288,7 @@ class Trends(HeavyScraper):
                 in self.driver.find_elements_by_class_name('feed-item')
             ]
         self.driver.close()
+        self.driverquit()
         kill_firefox()
         del self.driver
     
@@ -283,78 +356,12 @@ class APHeadlines(HeavyScraper):
                     pass
         
         self.driver.close()
+        self.driver.quit()
         kill_firefox
-        del self.driver
 
     def __repr__(self):
         return '<APHeadlines object: url={}>'.format(self.url)
 
-
-class APArticle(HeavyScraper):
-    """ AP Article contents fetched and scraped from the specified url."""
-    
-    def __init__(self, url):
-        """ Fetch and scrape news article and close the marionette driver.
-
-        ARGS:
-            url (required)
-        """
-        self.url = url
-        super().__init__(self.url)
-        print("Loading {} ...".format(self.url))
-        self.driver.get(self.url)
-        print("Article page loaded from {}".format(self.driver.current_url))
-        time.sleep(3)
-        self._title = self.driver.title
-        self._byline = ''
-        try:
-            self._byline = [
-                [e.location_once_scrolled_into_view, e][1]
-                for e in self.driver.find_elements_by_tag_name("span")
-                if re.match("^.*byline", e.get_attribute("className"))
-            ][0].text
-        except:
-            pass
-        print("Byline: {}".format(self._byline))
-        if not self._byline:
-            self._byline = [
-                [e.location_once_scrolled_into_view, e][1]
-                for e in self.driver.find_elements_by_tag_name("div")
-                if re.match("^.+byline", e.get_attribute("className"))
-            ][0].text
-
-        self._timestamp = self.driver.find_element_by_class_name(
-                "Timestamp"
-                ).get_attribute("data-source")
-        self._content = [
-            [s.location_once_scrolled_into_view, s.text][1]
-            for s in self.driver.find_elements_by_tag_name("p")
-        ]
-        self.driver.close()
-        self.driver.quit()
-        kill_firefox()
-        del self.driver
- 
-    @property
-    def title(self):
-        return self._title
-    
-    @property
-    def byline(self):
-        return self._byline
-
-    @property
-    def timestamp(self):
-        return self._timestamp
-
-    @property
-    def content(self):
-        return self._content
-    
-    def __repr__(self):
-        return "<APArticle object: title={}, timestamp={}, url={}>".format(
-                self.title, self.timestamp, self.url
-                )
 
 
 class Aggregator():
@@ -416,7 +423,8 @@ class Aggregator():
                 kill_firefox()
                 time.sleep(3)
                 continue
-
+        
+        self.cache_headlines()
         return self._headlines
 
     def cache_headlines(self):
@@ -440,9 +448,7 @@ class Aggregator():
         """ Fetches a new APArticle and appends its content to stories
         
         ARGS: url
-        pat = re.compile(r"^.*?(storyHTML\"\:\"\\+u003cp>)(.*)(\\+u003cp>p\\>___)?", f
-lags=re.MULTILINE)
-
+        
         """
         
         if re.search(r"apnews", url):
@@ -450,7 +456,7 @@ lags=re.MULTILINE)
                 article = APArticle(url)
                 self._stories.append(article)
             except Exception as ex:
-                kill_firefox()
+                #kill_firefox()
                 time.sleep(3)
                 print("Unable to retrieve article", ex)
 

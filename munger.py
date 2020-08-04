@@ -956,14 +956,15 @@ def traverse(node):
 
 
 def load_or_refresh_ag(topic_list=['Sports', 'Politics']):
-    # cached = datetime.datetime.today().strftime("tmp/ag_%Y%m%d.pkl")
-    cached = "./tmp/ag_20200803.pkl"
+    cached = datetime.datetime.today().strftime("tmp/ag_%Y%m%d.pkl")
+    # cached = "./tmp/ag_20200717.pkl"
     if os.path.isfile(cached):
         with open(cached, "rb") as pkl:
             ag = pickle.load(pkl)
     else:
         ag = Aggregator()
-        ag.collect_ap_headlines()
+        #ag.collect_ap_headlines()
+        ag.restore_headlines()
         
         for top in topic_list:
             failed = 0
@@ -982,12 +983,11 @@ def load_or_refresh_ag(topic_list=['Sports', 'Politics']):
                 if len(ag.stories) >= stopat:
                     break
 
-        for story in ag.stories:
+        # for story in ag.stories:
             # ditch unpicklable
             # del story.driver
-            #story.driver.quit()
-            story.driver = None
-            kill_firefox()
+            # story.driver = None
+            # kill_firefox()
 
         with open(cached, "wb") as pkl:
             pickle.dump(ag, pkl)
@@ -1014,7 +1014,8 @@ ag = load_or_refresh_ag(topic_list=[
 docs = []
 dateline_pattern = re.compile(r"^([A-Z][A-Z ,][^—]*?— )", flags=re.MULTILINE)
 for i, story in enumerate(ag.stories):
-    text = "\n".join(story.content)
+    # text = "\n".join(story.content)
+    text = story.content["text"]
     dateline = None
     try:
         dateline = dateline_pattern.search(text)[0]
@@ -1027,7 +1028,7 @@ for i, story in enumerate(ag.stories):
     docs[i]._.timestamp = story.timestamp
 
 catalog = DocumentCatalog(strip_bottoms(docs))
-del ag
+# del ag
 del docs
 
 # Unit Tests #
