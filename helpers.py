@@ -607,6 +607,39 @@ def find_duplicates(mylist):
     return sorted(set(d))
 
 
+def fix_double_quotes(p):
+    lsquote = b'\xe2\x80\x98'.decode("utf-8")
+    apos = b'\xe2\x80\x99'.decode("utf-8")
+    ldquote = b'\xe2\x80\x9c'.decode("utf-8")
+    rdquote = b'\xe2\x80\x9d'.decode("utf-8")
+    q = ""
+    warn = ""
+    
+    if re.match(r'\"', p):
+        pat = r"\"|{}|{}".format(ldquote, rdquote)
+        m = deque(re.finditer(pat, p))
+        parity = 0;
+        
+        while m:
+            # look for pairs from left to right
+            cm = m.popleft()
+            cp, p = p[:cm.end()], p[cm.end():]
+            repl = [ldquote, rdquote][parity]
+            if cm[0] != repl:
+                cp = re.sub(r'{}'.format(cm[0]), repl, cp)
+            q += cp
+            parity = (parity + 1) % 2
+
+        q += p
+        
+        if parity:
+            warn = "Unmatched double quote"
+            print("{}: {}".format(warn, q))
+    
+    else:
+        return p
+    
+    return q
 
 
 if __name__ == "__main__":
