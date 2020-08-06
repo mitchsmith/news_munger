@@ -50,50 +50,59 @@ class Munger():
         self._headline = None
         self._documents = documents
         self._sentences = self.find_mungeable_sentences()
+        self._sub_sentencess = []
         self._popular_roots = sorted(
                 self._sentences.keys(),
                 key=lambda k: len(self._sentences[k]),
                 reverse=True
                 )
-        self._sub_sentencess = []
-        self._be_children = {'left': {}, 'right': {}}
-        for i, j in self._sentences['be']:
+
+    def fetch_subtrees(self, lemma):
+        subtrees = {'left': dict(), 'right': dict()}
+        alternatives = []
+        if lemma not in self._sentences.keys():
+            # check verbnet
+            vnids = verbnet.classids(lemma)
+            alternatives = []
+            for vnid in vnids:
+                for lem in verbnet.lemmas(vnid):
+                    if lem in self._popular_roots:
+                        alternatives.append(lem)
+            if not alternatives:
+                alternatives = m._popular_roots
+            
+            token1 = nlp(lemma)
+            tokens = nlp(" ".join(alternatives))
+            lemma =sorted(
+                            [
+                                (t.lemma_, t.similarity(token1))
+                                for t
+                                in tokens
+                            ], 
+                            key=lambda n: n[1],
+                            reverse=True
+                            )[0][0]
+        
+        for i, j in self._sentences[lemma]:
             s = next(islice(self._documents[i].sents, j, None))
             for left in s.root.lefts:
                 k = left.dep_
-                if k in self._be_children['left'].keys():
-                    self._be_children['left'][k].append(
+                if k in subtrees['left'].keys():
+                    subtrees['left'][k].append(
                             (i , j, [t for t in left.subtree])
                             )
                 elif k != 'punct':
-                    self._be_children['left'][k] = [(i, j, [t for t in left.subtree])]
+                    subtrees['left'][k] = [(i, j, [t for t in left.subtree])]
             for right in s.root.rights:
                 k = right.dep_
-                if k in self._be_children['right'].keys():
-                    self._be_children['right'][k].append(
+                if k in subtrees['right'].keys():
+                    subtrees['right'][k].append(
                             (i, j, [t for t in right.subtree])
-                            )
+                        )
                 elif k != 'punct':
-                    self._be_children['right'][k] = [(i, j, [t for t in right.subtree])]
-        self._say_children = {'left': {}, 'right': {}}
-        for i, j in self._sentences['say']:
-            s = next(islice(self._documents[i].sents, j, None))
-            for left in s.root.lefts:
-                k = left.dep_
-                if k in self._say_children['left'].keys():
-                    self._say_children['left'][k].append(
-                            (i , j, [t for t in left.subtree])
-                            )
-                elif k != 'punct':
-                    self._say_children['left'][k] = [(i, j, [t for t in left.subtree])]
-            for right in s.root.rights:
-                k = right.dep_
-                if k in self._say_children['right'].keys():
-                    self._say_children['right'][k].append(
-                            (i, j, [t for t in right.subtree])
-                            )
-                elif k != 'punct':
-                    self._say_children['right'][k] = [(i, j, [t for t in right.subtree])]
+                    subtrees['right'][k] = [(i, j, [t for t in right.subtree])]
+        
+        return subtrees
 
 
     def build(self):
@@ -103,8 +112,10 @@ class Munger():
         This method is a stub.
         
         """
+        
         pass
     
+
     def munge_on_roots(self, sentence_a=None, sentence_b=None):
         if sentence_a:
             s1 = sentence_a
@@ -122,25 +133,94 @@ class Munger():
                     exclude=[(s1[0], s1[1])]
                     )
     
-        if s2[2] in ['say', 'be']:
-            if s1[0] and s2[0]:
-                return self.munge_children([s1, s2])
-            else:
-                return self.munge_on_roots()
-    
+        #if s2[2] in ['say', 'be']:
+        #    if s1[0] and s2[0]:
+        #        return self.munge_children([s1, s2])
+        #    else:
+        #        return self.munge_on_roots()
+        
+        for s in [s1, s2]:
+            if [t for t in s[3] if t.is_quote]:
+                return self.munge_sayings(s1, s2)
+
         lefts = []
         rights = []
         root_text = "{} ".format(s2[-1].root._.inflect(s1[-1].root.tag_))
         for left in s1[-1].root.lefts:
             lefts.append("".join([t.text_with_ws for t in left.subtree]))
         for right in s2[-1].root.rights:
-            rights.append("".join([t.text_with_ws for t in right.subtree]))
-        return nlp(
+            rights.append("".join(
+                    [
+                    t.text_with_ws
+                    if t.dep_ != 'conj'
+                    else
+                    re.sub(r'\S+', t._.inflect(s1[-1].root.tag_), t.text_with_ws)
+                    for t 
+                    in right.subtree
+                    ]
+                ))
+            # 10, 27; 0, 14
+        return [
+                s1,
+                s2,
+                nlp(
                 "{}{}{}".format("".join(lefts), root_text, "".join(rights))
                 )
+                ]
     
     
-    def munge_sayings(self, sentence_a=None, sentence_b=None):
+    def munge_sayings(self, sentence_a, sentence_b=None):
+        sentences = [sentence_a, sentence_b]
+        for i , s in enumerate(sentences):
+            if s:
+                hasq =  [t for t in s[3] if t.is_quote]
+                if len(hasq) % 2:
+                    if len(hasq) == 1:
+                        sent = next(islice(
+                            nlp("".join(
+                                [t.text_with_ws for t in s[3] if not t.is_quote]
+                                )),
+                            0,
+                            None
+                            ))
+                        try:
+                            s = (None, None, sent.root.lemma_, sent)
+                        except AttributeError:
+                            print("No root: ")
+                            print(sent)
+                    else:
+                        elements = [
+                                    t.text_with_ws
+                                    for t
+                                    in s[3]
+                                    ]
+                        if len([t for t in hasq if t.orth_ == '”']) == 1:
+                            elements, end = elements[:-2], elements[-2:]
+                            if '”' in end:
+                                del end[end.index('”')]
+                            else:
+                                end.append('”')
+                            elements.extend(end)
+                        else:
+                            try:
+                                if elements.index('“') != 0:
+                                    del elements[elements.index('“')]
+                                else:
+                                    elements = ['“'].extend(elements)
+                            except IndexError:
+                                elements = [
+                                        e 
+                                        for e 
+                                        in elements
+                                        if e not in ['“', '”']
+                                        ]
+                        sent = next(islice(
+                            nlp("".join(elements)),
+                            0,
+                            None
+                            ))
+                        s = (None, None, sent.root.lemma_, sent)
+                                
         return [sentence_a, sentence_b]
     
     
@@ -935,6 +1015,10 @@ class DocumentCatalog():
 
 
 # Functions
+
+
+ 
+
 
 def strip_bottoms(documents):
 
