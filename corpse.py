@@ -42,7 +42,7 @@ class ExquisiteCorpse(Munger):
                 rights = []
                 for right in sentence[3].root.rights:
                     rights.extend([t for t in right.children])
-                if rights[0].tag_ == "``":
+                if rights and rights[0].tag_ == "``":
                     try:
                         end = [t.tag_ for t in rights[1:]].index("``")
                         tmp = nlp("".join([t.text_with_ws for t in rights[1:end]]))

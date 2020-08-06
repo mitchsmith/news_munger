@@ -13,7 +13,7 @@ from bs4 import BeautifulSoup, UnicodeDammit
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from collections import deque
-from helpers import kill_firefox
+from helpers import kill_firefox, fix_double_quotes
 
 ### Bs4 based scrapers ###
 
@@ -174,6 +174,8 @@ class WikiGPE():
         return "<WikiGPE {}>".format(self.canonical_name)
 
 
+
+
 class APArticle():
     """ AP Article contents fetched and scraped from the specified url."""
     
@@ -199,7 +201,7 @@ class APArticle():
                     r"^.*?storyHTML\"\:\"\\+u003cp>(.*)\}?",
                     flags=re.MULTILINE
                     )
-            soup = BeautifulSoup(request.text)
+            soup = BeautifulSoup(request.text, 'html.parser')
             self._title = soup.find('title').text
             for span in (s for s in soup.find_all('span') if 'class' in s.attrs):
                 for class_name in span.attrs['class']:
@@ -210,9 +212,15 @@ class APArticle():
             print("Title: {}".format(self._title))
             print("Byline: {}".format(self._byline))
         
-            story_html = re.sub(r'\\+u003c', '<', story_pat.search(soup.text)[1])        
-            soup = BeautifulSoup(story_html)
-            paragraphs = [p.text for p in soup.find_all('p')]
+            story_html = re.sub(r'\\+u003c', '<', story_pat.search(request.text)[1])
+            story_html = re.sub(r'\\+', '', story_html)
+            soup = BeautifulSoup(story_html, 'html.parser')
+            paragraphs = [
+                    fix_double_quotes(p.text)
+                    for p
+                    in soup.find_all('p')
+                    ]
+
             end = sorted(
                     [p for p in paragraphs if re.match(r"^_+$", p)],
                     key=lambda x: len(x)

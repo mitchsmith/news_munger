@@ -123,7 +123,10 @@ class Munger():
                     )
     
         if s2[2] in ['say', 'be']:
-            return self.munge_children([s1, s2])
+            if s1[0] and s2[0]:
+                return self.munge_children([s1, s2])
+            else:
+                return self.munge_on_roots()
     
         lefts = []
         rights = []
@@ -963,8 +966,8 @@ def load_or_refresh_ag(topic_list=['Sports', 'Politics']):
             ag = pickle.load(pkl)
     else:
         ag = Aggregator()
-        #ag.collect_ap_headlines()
-        ag.restore_headlines()
+        ag.collect_ap_headlines()
+        # ag.restore_headlines()
         
         for top in topic_list:
             failed = 0
@@ -982,12 +985,6 @@ def load_or_refresh_ag(topic_list=['Sports', 'Politics']):
                         break
                 if len(ag.stories) >= stopat:
                     break
-
-        # for story in ag.stories:
-            # ditch unpicklable
-            # del story.driver
-            # story.driver = None
-            # kill_firefox()
 
         with open(cached, "wb") as pkl:
             pickle.dump(ag, pkl)
