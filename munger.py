@@ -176,6 +176,8 @@ class Munger():
                 hasq =  [t for t in s[3] if t.is_quote]
                 if len(hasq) % 2:
                     if len(hasq) == 1:
+                        print("Doc {}, s {}: Odd quotes:")
+                        print(s[3].text_with_ws)
                         sent = next(islice(
                             nlp("".join(
                                 [t.text_with_ws for t in s[3] if not t.is_quote]
@@ -215,7 +217,7 @@ class Munger():
                                         if e not in ['“', '”']
                                         ]
                         sent = next(islice(
-                            nlp("".join(elements)),
+                            nlp("".join(elements)).sents,
                             0,
                             None
                             ))
@@ -1050,8 +1052,8 @@ def load_or_refresh_ag(topic_list=['Sports', 'Politics']):
             ag = pickle.load(pkl)
     else:
         ag = Aggregator()
-        ag.collect_ap_headlines()
-        # ag.restore_headlines()
+        # ag.collect_ap_headlines()
+        ag.restore_headlines()
         
         for top in topic_list:
             failed = 0

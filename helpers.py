@@ -614,31 +614,25 @@ def fix_double_quotes(p):
     rdquote = b'\xe2\x80\x9d'.decode("utf-8")
     q = ""
     warn = ""
+    pat = r'"|{}|{}|{}'.format(ldquote, rdquote, "['" + lsquote + apos + "]{2}")
+    m = deque(re.finditer(pat, p))
+    parity = 0;
     
-    if re.match(r'\"', p):
-        pat = r"\"|{}|{}".format(ldquote, rdquote)
-        m = deque(re.finditer(pat, p))
-        parity = 0;
-        
-        while m:
-            # look for pairs from left to right
-            cm = m.popleft()
-            cp, p = p[:cm.end()], p[cm.end():]
-            repl = [ldquote, rdquote][parity]
-            if cm[0] != repl:
-                cp = re.sub(r'{}'.format(cm[0]), repl, cp)
-            q += cp
-            parity = (parity + 1) % 2
+    while m:
+        # look for pairs from left to right
+        cm = m.popleft()
+        cp, p = p[:cm.end()], p[cm.end():]
+        repl = [ldquote, rdquote][parity]
+        cp = re.sub(r'{}'.format(cm[0]), repl, cp)
+        q += cp
+        parity = (parity + 1) % 2
 
-        q += p
-        
-        if parity:
-            warn = "Unmatched double quote"
-            print("{}: {}".format(warn, q))
+    q += p
     
-    else:
-        return p
-    
+    if parity:
+        warn = "Unmatched double quote"
+        print("{}: {}".format(warn, q))
+
     return q
 
 
