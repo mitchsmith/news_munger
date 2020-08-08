@@ -169,61 +169,130 @@ class Munger():
                 ]
     
     
+    def match_quotes(self, match, tokens):
+        elements = [
+                    t.text_with_ws
+                    for t
+                    in tokens
+                    ]
+        if elements[0] in ['“', '”']:
+            elements[0] = '“'
+            punct = [elements.index(e) for e in elements if e == ","]
+            if punct:
+                left = "".join(elements[:punct[-1]+1])
+                left += '”'
+                text += "".join(elements[punct[-1]+1:])
+            else:
+                text = "{}”".format("".join(elements))
+                return text 
+          
+        return "“{}".format("".join(elements))
+        
+
     def munge_sayings(self, sentence_a, sentence_b=None):
         sentences = [sentence_a, sentence_b]
         for i , s in enumerate(sentences):
             if s:
-                hasq =  [t for t in s[3] if t.is_quote]
+                hasq =  deque([t for t in s[3] if t.is_quote])
+                
                 if len(hasq) % 2:
-                    if len(hasq) == 1:
-                        print("Doc {}, s {}: Odd quotes:")
-                        print(s[3].text_with_ws)
-                        sent = next(islice(
-                            nlp("".join(
-                                [t.text_with_ws for t in s[3] if not t.is_quote]
-                                )),
-                            0,
-                            None
-                            ))
-                        try:
-                            s = (None, None, sent.root.lemma_, sent)
-                        except AttributeError:
-                            print("No root: ")
-                            print(sent)
+                    print("Doc {}, s {}: Odd quotes:")
+                    print(s[3].text_with_ws)
+                    idx = s[3].root.i - s[3].start
+                    left = [t for t in s[3][:idx]]
+                    right = [t for t in s[3][idx+1:]]
+                    qol = [q for q in hasq if q.i - s[3].start <= len(left)]
+                    qor = [q for q in hasq if q.i - s[3].start > len(left)]
+                    if len(qol) % 2:
+                        print("Matching quotes with {} and {}".format(qol, left))
+                        ltext = self.match_quotes(qol[0].text, left)
+                        rtext = "".join([t.text_with_ws for t in right])
                     else:
-                        elements = [
-                                    t.text_with_ws
-                                    for t
-                                    in s[3]
-                                    ]
-                        if len([t for t in hasq if t.orth_ == '”']) == 1:
-                            elements, end = elements[:-2], elements[-2:]
-                            if '”' in end:
-                                del end[end.index('”')]
-                            else:
-                                end.append('”')
-                            elements.extend(end)
-                        else:
-                            try:
-                                if elements.index('“') != 0:
-                                    del elements[elements.index('“')]
-                                else:
-                                    elements = ['“'].extend(elements)
-                            except IndexError:
-                                elements = [
-                                        e 
-                                        for e 
-                                        in elements
-                                        if e not in ['“', '”']
-                                        ]
-                        sent = next(islice(
+                        rtext = self.match_quotes(qor[-1].text, right)    
+                        ltext = "".join([t.text_with_ws for t in left])
+                    elements = (ltext, s[3].root.text_with_ws, rtext)
+
+                    sent = next(islice(
                             nlp("".join(elements)).sents,
                             0,
                             None
                             ))
-                        s = (None, None, sent.root.lemma_, sent)
-                                
-        return [sentence_a, sentence_b]
+                    s = (None, None, sent.root.lemma_, sent)
+                    hasq = deque([t for t in s[3] if t.is_quote])
+                
+                quotation = []
+                split = 0
+                wantq = deque([t.i for t in hasq])
+                while wantq:
+                    start = wantq.popleft() + 1
+                    end = wantq.popleft()
+                    quotation.append(
+                            "".join(
+                                    [
+                                    t.text_with_ws
+                                    for t
+                                    in s[3][start:end]
+                                    ]   
+                                )
+                            )
+                    split += 1
+                
+                sub_sents = [ss for ss in nlp("".join(quotation)).sents]
+
+                replacements = []
+                spliton = None
+                if split:
+                    if len(sub_sents) == 1:
+                        repl = self.munge_on_roots(
+                                    (
+                                    None,
+                                    None,
+                                    sub_sents[0].root.lemma_,
+                                    sub_sents[0]
+                                    )
+                                )[-1]
+                        print("254 repl: {}".format(repl))
+
+                        try:
+                            spliton = [t.i+1 for t in repl if t.tag_ == ','][-1] - repl.start
+                            replacements = [
+                                    "".join([t.text_with_ws for t in repl[:spliton]]),
+                                    "".join([t.text_with_ws for t in repl[spliton+1:]])
+                                    ]
+                        except:
+                            print("No comma to split on")
+                            replacements.append(repl.text_with_ws)
+                
+                for sub in sub_sents:
+                    #try:
+                    repl = self.munge_on_roots(
+                                (
+                                None,
+                                None,
+                                sub.root.lemma_,
+                                sub
+                                )
+                            )[-1]
+                    print("276 repl: {}".format(repl))
+                    replacements.append(repl.text_with_ws)
+                    #except AttributeError:
+                    #    pass
+                print("Replacements:")
+                print(replacements)
+                print("**")
+
+                new_text = s[3].text_with_ws
+
+                for j, repl in enumerate(replacements):
+                    if j < len(quotation):
+                        re.sub(r''.format(quotation[j]), repl, new_text)
+                    
+                sent = next(islice(nlp(new_text).sents, 0, None))
+                s = (None, None, sent.root.lemma_, sent)
+                
+                sentences[i] = s 
+
+        return sentences
     
     
     def munge_beings(self, sentence_a=None, sentence_b=None):
@@ -1052,8 +1121,8 @@ def load_or_refresh_ag(topic_list=['Sports', 'Politics']):
             ag = pickle.load(pkl)
     else:
         ag = Aggregator()
-        # ag.collect_ap_headlines()
-        ag.restore_headlines()
+        ag.collect_ap_headlines()
+        #ag.restore_headlines()
         
         for top in topic_list:
             failed = 0
