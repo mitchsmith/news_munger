@@ -141,8 +141,9 @@ class Munger():
         #        return self.munge_on_roots()
         
         for s in [s1, s2]:
-            if [t for t in s[3] if t.is_quote]:
-                return self.munge_sayings(s1, s2)
+            if s[-1].root.lemma_ == "say" or [t for t in s[3] if t.is_quote]:
+                #return self.munge_sayings(s1, s2)
+                return self.munge_on_roots()
 
         lefts = []
         rights = []
@@ -161,13 +162,14 @@ class Munger():
                     ]
                 ))
             # 10, 27; 0, 14
-        return [
-                s1,
-                s2,
+                
+        munged = next(islice(
                 nlp(
-                "{}{}{}".format("".join(lefts), root_text, "".join(rights))
-                )
-                ]
+                    "{}{}{}".format("".join(lefts), root_text, "".join(rights))
+                    ).sents,
+                0,
+                None))
+        return (None, None, munged.root.lemma_, munged)
     
     
     def balance_quotes(self, sentence):
@@ -217,131 +219,48 @@ class Munger():
         Extract quoted elements and return a list of sentence tuples
         """
         s = sentence[-1]
-        hasq =  [t for t in s if t.orth_ in ['“', '”']]
+        hasq = deque([t for t in s if t.orth_ in ['“', '”']])
         if len(hasq) % 2:
             sent = self.balance_quotes(sentence)
             return self.extract_quoted(sent)
         else:
-            pass
-        
+            parts = []
+            while hasq:
+                lq = hasq.popleft()
+                rq = hasq.popleft()
+                start = lq.i - s.start + 1
+                end = rq.i - s.start
+                part = "".join([t.text_with_ws for t in s[start:end]])
+                parts.append(part)
 
+            text = re.sub(r"\s+", " ", " ".join(parts))
+            sub_sents = [(None, None, ss.root.lemma_, ss) for ss in nlp(text).sents]
 
+            return sub_sents
 
 
     def munge_sayings(self, sentence_a, sentence_b=None):
         sentences = [sentence_a, sentence_b]
+        swaps = None
         for i , s in enumerate(sentences):
             if s:
-                hasq =  deque([t for t in s[3] if t.orth_ in ['“', '”']])
-                #print("Quotes at: {}".format(hasq))
-                #print([t.tag_ for t in s[3]])
-                if len(hasq) % 2:
-                    #print("Doc {}, s {}: Odd quotes:")
-                    #print(s[3].text_with_ws)
-                    idx = s[3].root.i - s[3].start
-                    left = [t for t in s[3][:idx]]
-                    right = [t for t in s[3][idx+1:]]
-                    qol = [q for q in hasq if q.i - s[3].start <= len(left)]
-                    qor = [q for q in hasq if q.i - s[3].start > len(left)]
-                    
+                hasq =  deque([t for t in s[-1] if t.orth_ in ['“', '”']])
+                if hasq:
+                    sub_sents = self.extract_quoted(s)
+                    swaps = []
+                    for ss in sub_sents:
+                        swaps.append(self.munge_on_roots(ss))
 
-                    if len(qol) % 2:
-                        #print("Matching quotes with {} and {}".format(qol, left))
-                        ltext = self.match_quotes(qol[0].text, left)
-                        rtext = "".join([t.text_with_ws for t in right])
-                    else:
-                        rtext = self.match_quotes(qor[-1].text, right)    
-                        ltext = "".join([t.text_with_ws for t in left])
-                    elements = (ltext, s[3].root.text_with_ws, rtext)
+                    idx = s[-1].root.i - s[-1].start
+                    left = [t for t in s[-1][:idx]]
+                    right = [t for t in s[-1][idx+1:]]
+                    qol = [q for q in hasq if q.i - s[-1].start <= len(left)]
+                    qor = [q for q in hasq if q.i - s[-1].start > len(left)]
 
-                    sent = next(islice(
-                            nlp("".join(elements)).sents,
-                            0,
-                            None
-                            ))
-                    s = (None, None, sent.root.lemma_, sent)
-                    hasq =  deque([t for t in s[3] if t.orth_ in ['“', '”']])
-                
-                quotation = []
-                split = 0
-                wantq = deque([t.i - s[-1].start for t in hasq])
-                #print("Quote indeces: ".format(wantq))
-                while wantq:
-                    start = wantq.popleft() + 1
-                    end = wantq.popleft()
-                    quotation.append(
-                            "".join(
-                                    [
-                                    t.text_with_ws
-                                    for t
-                                    in s[3][start:end]
-                                    ]   
-                                )
-                            )
-                    split += 1
-                
-                sub_sents = [ss for ss in nlp("".join(quotation)).sents]
+                    #print(sub_sents)
+                    #print(swaps)
 
-                replacements = []
-                spliton = None
-                if split:
-                    if len(sub_sents) == 1:
-                        repl = self.munge_on_roots(
-                                    (
-                                    None,
-                                    None,
-                                    sub_sents[0].root.lemma_,
-                                    sub_sents[0]
-                                    )
-                                )[-1]
-                        #print("254 repl: {}".format(repl))
-
-                        if type(repl) == tuple:
-                            repl = repl[-1]
-                        try:
-                            spliton = [t.i+1 for t in repl if t.tag_ == ','][-1] - repl.start
-                            replacements = [
-                                    "".join([t.text_with_ws for t in repl[:spliton]]),
-                                    "".join([t.text_with_ws for t in repl[spliton+1:]])
-                                    ]
-                        except:
-                            print("No comma to split on")
-                            replacements.append(repl.text_with_ws)
-                
-                for sub in sub_sents:
-                    #try:
-                    repl = self.munge_on_roots(
-                                (
-                                None,
-                                None,
-                                sub.root.lemma_,
-                                sub
-                                )
-                            )[-1]
-
-                    if type(repl) == tuple:
-                        repl = repl[-1]
-                    print("276 repl: {}".format(repl))
-                    replacements.append(repl.text_with_ws)
-                    #except AttributeError:
-                    #    pass
-                #print("Replacements:")
-                #print(replacements)
-                #print("**")
-
-                new_text = s[3].text_with_ws
-
-                for j, repl in enumerate(replacements):
-                    if j < len(quotation):
-                        re.sub(r''.format(quotation[j]), repl, new_text)
-                    
-                sent = next(islice(nlp(new_text).sents, 0, None))
-                s = (None, None, sent.root.lemma_, sent)
-                
-                #sentences[i] = s 
-                sentences = [s]
-
-        return sentences
+        return swaps
     
     
     def munge_beings(self, sentence_a=None, sentence_b=None):
