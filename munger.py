@@ -12,6 +12,7 @@ import random
 import datetime
 import time
 import json
+import string
 import pickle
 import nltk
 import spacy
@@ -169,42 +170,83 @@ class Munger():
                 ]
     
     
-    def match_quotes(self, match, tokens):
+    def balance_quotes(self, sentence):
+        sent = sentence[-1]
+        hasq =  [t for t in sent if t.orth_ in ['“', '”']]
+        text = ""
+        center = sent.root.i - sent.start
+        lefts = [t.i - sent.start for t in hasq if t.i - sent.start < center]
+        rights = [t.i - sent.start for t in hasq if t.i - sent.start > center]
         elements = [
                     t.text_with_ws
                     for t
-                    in tokens
+                    in sent
                     ]
-        if elements[0] in ['“', '”']:
-            elements[0] = '“'
-            punct = [elements.index(e) for e in elements if e == ","]
-            if punct:
-                left = "".join(elements[:punct[-1]+1])
-                left += '”'
-                text += "".join(elements[punct[-1]+1:])
+        if len(lefts) % 2:
+            if lefts[0] != 0:
+                text += '“'
+                fixcaps = re.sub(
+                        r'^\W+(\w+)', r'\1', "".join(elements[:center + 1])
+                        ).split(" ")
+                fixcaps[0] = string.capwords((fixcaps[0]))
+                text +=  " ".join(fixcaps)
             else:
-                text = "{}”".format("".join(elements))
-                return text 
-          
-        return "“{}".format("".join(elements))
+                ri = [
+                        t.i - sent.start
+                        for t
+                        in sent
+                        if t.i < sent.root.i
+                        and t.dep_ == "punct"
+                     ][-1] + 1
+                text += "".join(elements[:ri])
+                text += '”'
+                text += "".join(elements[ri:center + 1])
+        else:
+            text += "".join(elements[:center + 1])
         
+        text += "".join([e for e in elements[center + 1:] if e not in ['“', '”']])
+
+        s = next(islice(nlp(text).sents, 0, None))
+        
+        return (None, None, s.root.lemma_, s)
+    
+           
+    def extract_quoted(self, sentence):
+
+        """
+        Extract quoted elements and return a list of sentence tuples
+        """
+        s = sentence[-1]
+        hasq =  [t for t in s if t.orth_ in ['“', '”']]
+        if len(hasq) % 2:
+            sent = self.balance_quotes(sentence)
+            return self.extract_quoted(sent)
+        else:
+            pass
+        
+
+
+
 
     def munge_sayings(self, sentence_a, sentence_b=None):
         sentences = [sentence_a, sentence_b]
         for i , s in enumerate(sentences):
             if s:
-                hasq =  deque([t for t in s[3] if t.is_quote])
-                
+                hasq =  deque([t for t in s[3] if t.orth_ in ['“', '”']])
+                #print("Quotes at: {}".format(hasq))
+                #print([t.tag_ for t in s[3]])
                 if len(hasq) % 2:
-                    print("Doc {}, s {}: Odd quotes:")
-                    print(s[3].text_with_ws)
+                    #print("Doc {}, s {}: Odd quotes:")
+                    #print(s[3].text_with_ws)
                     idx = s[3].root.i - s[3].start
                     left = [t for t in s[3][:idx]]
                     right = [t for t in s[3][idx+1:]]
                     qol = [q for q in hasq if q.i - s[3].start <= len(left)]
                     qor = [q for q in hasq if q.i - s[3].start > len(left)]
+                    
+
                     if len(qol) % 2:
-                        print("Matching quotes with {} and {}".format(qol, left))
+                        #print("Matching quotes with {} and {}".format(qol, left))
                         ltext = self.match_quotes(qol[0].text, left)
                         rtext = "".join([t.text_with_ws for t in right])
                     else:
@@ -218,11 +260,12 @@ class Munger():
                             None
                             ))
                     s = (None, None, sent.root.lemma_, sent)
-                    hasq = deque([t for t in s[3] if t.is_quote])
+                    hasq =  deque([t for t in s[3] if t.orth_ in ['“', '”']])
                 
                 quotation = []
                 split = 0
-                wantq = deque([t.i for t in hasq])
+                wantq = deque([t.i - s[-1].start for t in hasq])
+                #print("Quote indeces: ".format(wantq))
                 while wantq:
                     start = wantq.popleft() + 1
                     end = wantq.popleft()
@@ -251,8 +294,10 @@ class Munger():
                                     sub_sents[0]
                                     )
                                 )[-1]
-                        print("254 repl: {}".format(repl))
+                        #print("254 repl: {}".format(repl))
 
+                        if type(repl) == tuple:
+                            repl = repl[-1]
                         try:
                             spliton = [t.i+1 for t in repl if t.tag_ == ','][-1] - repl.start
                             replacements = [
@@ -273,13 +318,16 @@ class Munger():
                                 sub
                                 )
                             )[-1]
+
+                    if type(repl) == tuple:
+                        repl = repl[-1]
                     print("276 repl: {}".format(repl))
                     replacements.append(repl.text_with_ws)
                     #except AttributeError:
                     #    pass
-                print("Replacements:")
-                print(replacements)
-                print("**")
+                #print("Replacements:")
+                #print(replacements)
+                #print("**")
 
                 new_text = s[3].text_with_ws
 
@@ -290,7 +338,8 @@ class Munger():
                 sent = next(islice(nlp(new_text).sents, 0, None))
                 s = (None, None, sent.root.lemma_, sent)
                 
-                sentences[i] = s 
+                #sentences[i] = s 
+                sentences = [s]
 
         return sentences
     
@@ -1114,8 +1163,8 @@ def traverse(node):
 
 
 def load_or_refresh_ag(topic_list=['Sports', 'Politics']):
-    cached = datetime.datetime.today().strftime("tmp/ag_%Y%m%d.pkl")
-    # cached = "./tmp/ag_20200717.pkl"
+    # cached = datetime.datetime.today().strftime("tmp/ag_%Y%m%d.pkl")
+    cached = "./tmp/ag_20200808.pkl"
     if os.path.isfile(cached):
         with open(cached, "rb") as pkl:
             ag = pickle.load(pkl)
