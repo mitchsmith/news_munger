@@ -239,6 +239,68 @@ class Munger():
             return sub_sents
 
 
+    def swap_quotes(self, sentence):
+        s = sentence
+        hasq =  deque([t for t in s[-1] if t.orth_ in ['“', '”']])
+        swaps = None
+        if hasq:
+            if len(hasq) % 2:
+                s = self.balance_quotes(s)
+                return self.swap_quotes(s)
+            sub_sents = self.extract_quoted(s)
+            swaps = []
+            for ss in sub_sents:
+                swaps.append(self.munge_on_roots(ss))
+            text = ""
+            ri = -1
+            while hasq:
+                left = hasq.popleft()
+                right = hasq.popleft()
+                li = left.i - s[-1].start + 1
+                ri = right.i - s[-1].start
+                parts = []
+                if len(hasq) == 0:
+                    for swap in swaps:
+                        parts.extend(
+                            ss.text_with_ws
+                            for ss
+                            in swap[-1]
+                            )
+                    repl = re.sub(
+                            r"[\s\n]+",
+                            " ",
+                            " ".join(parts),
+                            flags=re.MULTILINE
+                            )
+                elif len(swaps) == len(hasq) / 2:
+                    repl = re.sub(
+                            r"\n",
+                            "",
+                            swaps[0][-1].text_with_ws,
+                            flags=re.MULTILINE
+                            )
+                    del swaps[0]
+                else:
+                    try:
+                        spl = [
+                                t.i - swaps[0].start
+                                for t in swaps[0]
+                                if t.orth_ == ","
+                                ][0]
+                        repl, swaps[0] = swaps[0][:spl], swaps[0][spl:]
+                    except:
+                        repl = "Just kidding,"
+
+                text += "".join([t.text_with_ws for t in s[-1]][:li])
+                text += repl
+            
+            text += "".join([t.text_with_ws for t in s[-1]][ri:])
+            new_sent = next(islice(nlp(text)).sents, 0, None))
+            s = (None, None, new_sent.root.lemma_, new_sent)
+
+        return s
+
+
     def munge_sayings(self, sentence_a, sentence_b=None):
         sentences = [sentence_a, sentence_b]
         swaps = None
@@ -246,21 +308,16 @@ class Munger():
             if s:
                 hasq =  deque([t for t in s[-1] if t.orth_ in ['“', '”']])
                 if hasq:
-                    sub_sents = self.extract_quoted(s)
-                    swaps = []
-                    for ss in sub_sents:
-                        swaps.append(self.munge_on_roots(ss))
+                    if len(hasq) % 2:
+                        s = self.balance_quotes(s)
+                        return self.munge_sayings(s)
+                    return self.swap_quotes()
+                
 
-                    idx = s[-1].root.i - s[-1].start
-                    left = [t for t in s[-1][:idx]]
-                    right = [t for t in s[-1][idx+1:]]
-                    qol = [q for q in hasq if q.i - s[-1].start <= len(left)]
-                    qor = [q for q in hasq if q.i - s[-1].start > len(left)]
 
-                    #print(sub_sents)
-                    #print(swaps)
+               
 
-        return swaps
+        return s
     
     
     def munge_beings(self, sentence_a=None, sentence_b=None):
