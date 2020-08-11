@@ -295,7 +295,7 @@ class Munger():
                 text += repl
             
             text += "".join([t.text_with_ws for t in s[-1]][ri:])
-            new_sent = next(islice(nlp(text)).sents, 0, None))
+            new_sent = next(islice(nlp(text).sents, 0, None))
             s = (None, None, new_sent.root.lemma_, new_sent)
 
         return s
@@ -324,8 +324,76 @@ class Munger():
         return [sentence_a, sentence_b]
     
     
-    def munge_children(self, sentence_a=None, sentence_b=None):
-        return [sentence_a, sentence_b]
+    def munge_children(self, sentence, *args, **kwargs):
+        s = sentence[-1]
+        lemma = s.root.lemma_
+        workon = ['left', 'right']
+        deps =[]
+
+        if 'left' in args:
+            del workon[1]
+        elif 'right' in args:
+            del workon[0]
+        
+        if 'deps' in kwargs.keys():
+            deps = kwargs['deps']
+        
+        subtrees = self.fetch_subtrees(lemma)
+        elements = [] #[t.text_with_ws for t in s]
+        
+        for hand in workon:
+            if deps:
+                keys = deps
+            else:
+                keys = subtrees[hand].keys()
+        
+            if hand == 'left':
+                nodes = s.root.lefts
+            else:
+                nodes = s.root.rights
+        
+            cursor = 0
+            infl_tag = s.root.tag_
+            
+            for child in (c for c in nodes if c.dep_ in keys and c.dep != 'punct'):    
+                tree = [t for t in child.subtree] 
+                li = tree[0].i - s.start
+                ri = tree[-1].i - s.start
+                elements.extend([t.text_with_ws for t in s][cursor:li])
+                choices = [
+                        stree
+                        for stree
+                        in subtrees[hand][child.dep_]
+                        if stree[0] != sentence[0] or stree[1] != sentence[1]
+                        ]
+                try:
+                    r = random.choice(choices)
+                    if child.dep_ == "nsubj":
+                        infl_tag = next(
+                                islice(
+                                    self._documents[r[0]].sents,
+                                    r[1],
+                                    None
+                                    )
+                                 ).root.tag_
+                    
+                    elements.extend([t.text_with_ws for t in r[-1]])
+                    cursor = ri + 1
+                except IndexError:
+                    pass
+
+            if hand == "left":
+                elements.append(s.root.text_with_ws)
+                re.sub(r''.format(s.root.orth_),
+                        s.root._.inflect(infl_tag),
+                        elements[-1]
+                        )
+        
+        elements.extend(t.text_with_ws for t in s[cursor:])
+        sent  = next(islice(nlp("".join(elements)).sents, 0, None))
+        s = (None, None, sent.root.lemma_, sent)
+        
+        return s
     
     
     def picka_sentence(self, doc_id=None, **kwargs):
