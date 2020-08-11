@@ -25,7 +25,7 @@ from collections import deque
 from itertools import islice
 from scrapers import Trends, Aggregator, APHeadlines, APArticle
 from scrapers import WikiPerson, WikiOrg, WikiGPE
-from helpers import find_duplicates, kill_firefox
+from helpers import find_duplicates, kill_firefox, irreg_inflect
 from helpers import GENERIC_TITLES, FEMININE_TITLES, MASCULINE_TITLES, PRESIDENTIOSITUDE
 from gtts import  list_voices, text_to_mp3
 
@@ -57,6 +57,18 @@ class Munger():
                 key=lambda k: len(self._sentences[k]),
                 reverse=True
                 )
+
+
+    def build(self):
+        
+        """
+        NOT IMPLEMENTED
+        This method is a stub.
+        
+        """
+        
+        pass
+
 
     def fetch_subtrees(self, lemma):
         subtrees = {'left': dict(), 'right': dict()}
@@ -104,17 +116,6 @@ class Munger():
                     subtrees['right'][k] = [(i, j, [t for t in right.subtree])]
         
         return subtrees
-
-
-    def build(self):
-        
-        """
-        NOT IMPLEMENTED
-        This method is a stub.
-        
-        """
-        
-        pass
     
 
     def munge_on_roots(self, sentence_a=None, sentence_b=None):
@@ -311,16 +312,17 @@ class Munger():
                     if len(hasq) % 2:
                         s = self.balance_quotes(s)
                         return self.munge_sayings(s)
-                    return self.swap_quotes()
-                
-
-
-               
-
-        return s
+                    return self.swap_quotes(s)
+                        
+                else:
+                    return self.munge_children(s)
+        
+        return sentencs[0]
     
     
-    def munge_beings(self, sentence_a=None, sentence_b=None):
+    def munge_beings(self, sentence, sentence_b=None):
+        
+
         return [sentence_a, sentence_b]
     
     
@@ -354,6 +356,7 @@ class Munger():
         
             cursor = 0
             infl_tag = s.root.tag_
+            infl_cntx = s
             
             for child in (c for c in nodes if c.dep_ in keys and c.dep != 'punct'):    
                 tree = [t for t in child.subtree] 
@@ -369,13 +372,14 @@ class Munger():
                 try:
                     r = random.choice(choices)
                     if child.dep_ == "nsubj":
-                        infl_tag = next(
+                        infl_cntx = next(
                                 islice(
                                     self._documents[r[0]].sents,
                                     r[1],
                                     None
                                     )
-                                 ).root.tag_
+                                 )
+                        infl_tag = infl_cntx.root.tag_
                     
                     elements.extend([t.text_with_ws for t in r[-1]])
                     cursor = ri + 1
@@ -384,10 +388,49 @@ class Munger():
 
             if hand == "left":
                 elements.append(s.root.text_with_ws)
-                re.sub(r''.format(s.root.orth_),
-                        s.root._.inflect(infl_tag),
-                        elements[-1]
-                        )
+                if s.root.lemma_ in ['be', 'do', 'have', 'say']:
+                    t = 0
+                    n = 0
+                    p = 2
+
+                    subj = [
+                            c
+                            for c
+                            in infl_cntx.root.lefts
+                            if c.dep_ == 'nsubj'
+                            ]
+                    if subj:
+                        if subj[0].tag_ in ['NNS', 'NNPS']:
+                            n = 1
+                        elif subj[0].tag_ == 'PRP':
+                            if subj[0].lower == 'you':
+                                p = 1
+                            if subj[0].lower == 'i':
+                                p = 0
+                            if subj[0].lower == 'we':
+                                p = 0
+                                n = 1
+                        
+                        if 'conj' in [c.dep_ for c in subj[0].subtree]:
+                            n = 1
+                        
+                    if infl_tag == 'VBG':
+                        repl = s.root._.inflect('VBG')
+                    else:
+                        if infl_tag == 'VBD':
+                            t = 1
+                        repl = irreg_inflect(s.root.lemma_, [t, n, p])
+                    
+                    re.sub(r''.format(s.root.orth_),
+                            repl,
+                            elements[-1]
+                            )
+                    
+                else:
+                    re.sub(r''.format(s.root.orth_),
+                            s.root._.inflect(infl_tag),
+                            elements[-1]
+                            )
         
         elements.extend(t.text_with_ws for t in s[cursor:])
         sent  = next(islice(nlp("".join(elements)).sents, 0, None))

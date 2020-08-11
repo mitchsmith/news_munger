@@ -636,6 +636,45 @@ def fix_double_quotes(p):
     return q
 
 
+def irreg_inflect(lemma, context):
+
+    """ 
+    v[tense][number][person]
+    """
+    
+    itable  = {}
+    itable['be'] = [[
+                        ['am', 'are', 'is'],
+                        ['are', 'are', 'are']],
+                        [['was', 'were', 'was'],
+                        ['were', 'were', 'were']
+                    ]]
+    itable['do'] = [[
+                        ['do', 'do', 'does'],
+                        ['do', 'do', 'do']],
+                        [['did', 'did', 'did'],
+                        ['did', 'did', 'did']
+                    ]]
+    itable['have'] = [[
+                        ['have', 'have', 'has'],
+                        ['have', 'have', 'have']],
+                        [['had', 'had', 'had'],
+                        ['had', 'had', 'had']
+                    ]]
+    itable['say'] = [[
+                        ['say', 'say', 'says'],
+                        ['say', 'say', 'say']],
+                        [['said', 'said', 'said'],
+                        ['said', 'said', 'said']
+                    ]]
+    
+    t, n, p = context
+    
+    return itable[lemma][t][n][p]
+
+
+
+
 if __name__ == "__main__":
     """ run unit tests  """
     # import unittest
