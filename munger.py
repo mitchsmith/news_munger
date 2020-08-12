@@ -82,7 +82,7 @@ class Munger():
                     if lem in self._popular_roots:
                         alternatives.append(lem)
             if not alternatives:
-                alternatives = m._popular_roots
+                alternatives = self._popular_roots
             
             token1 = nlp(lemma)
             tokens = nlp(" ".join(alternatives))
@@ -331,7 +331,9 @@ class Munger():
         lemma = s.root.lemma_
         workon = ['left', 'right']
         deps =[]
-
+        infl_tag = s.root.tag_
+        infl_cntx = s
+        
         if 'left' in args:
             del workon[1]
         elif 'right' in args:
@@ -341,8 +343,9 @@ class Munger():
             deps = kwargs['deps']
         
         subtrees = self.fetch_subtrees(lemma)
-        elements = [] #[t.text_with_ws for t in s]
-        
+        elements = []
+        cursor = 0
+
         for hand in workon:
             if deps:
                 keys = deps
@@ -353,11 +356,9 @@ class Munger():
                 nodes = s.root.lefts
             else:
                 nodes = s.root.rights
+                cursor = s.root.i - s.start + 1
+
         
-            cursor = 0
-            infl_tag = s.root.tag_
-            infl_cntx = s
-            
             for child in (c for c in nodes if c.dep_ in keys and c.dep != 'punct'):    
                 tree = [t for t in child.subtree] 
                 li = tree[0].i - s.start
@@ -389,10 +390,10 @@ class Munger():
             if hand == "left":
                 elements.append(s.root.text_with_ws)
                 if s.root.lemma_ in ['be', 'do', 'have', 'say']:
-                    t = 0
-                    n = 0
-                    p = 2
-
+                    t = 0 # present
+                    n = 0 # singular
+                    p = 2 # 3rd person
+            
                     subj = [
                             c
                             for c
@@ -403,11 +404,11 @@ class Munger():
                         if subj[0].tag_ in ['NNS', 'NNPS']:
                             n = 1
                         elif subj[0].tag_ == 'PRP':
-                            if subj[0].lower == 'you':
+                            if subj[0].lower_ == 'you':
                                 p = 1
-                            if subj[0].lower == 'i':
+                            if subj[0].lower_ == 'i':
                                 p = 0
-                            if subj[0].lower == 'we':
+                            if subj[0].lower_ == 'we':
                                 p = 0
                                 n = 1
                         
@@ -425,18 +426,18 @@ class Munger():
                             repl,
                             elements[-1]
                             )
-                    
                 else:
                     re.sub(r''.format(s.root.orth_),
                             s.root._.inflect(infl_tag),
                             elements[-1]
                             )
         
+                cursor += 1
+
         elements.extend(t.text_with_ws for t in s[cursor:])
-        sent  = next(islice(nlp("".join(elements)).sents, 0, None))
-        s = (None, None, sent.root.lemma_, sent)
         
-        return s
+        return sent_from_wordlist(elements)
+                
     
     
     def picka_sentence(self, doc_id=None, **kwargs):
@@ -1224,7 +1225,14 @@ class DocumentCatalog():
 # Functions
 
 
- 
+def sent_from_wordlist(elements):
+    text = " ".join(elements)
+    text = re.sub(r'[\n\s]+', ' ', text)
+    text = re.sub(r'\s+([,\.\!\?])', r'\1', text)
+    sent  = next(islice(nlp(text).sents, 0, None))
+    return (None, None, sent.root.lemma_, sent)
+
+
 
 
 def strip_bottoms(documents):
