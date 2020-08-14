@@ -30,13 +30,19 @@ class MadLib(Munger):
 
 class ExquisiteCorpse(Munger):
     
-    """  """
+    """
+    A fake news article composed of sentence fragments gleaned from the day's
+    headlines, in the style of surrealist party game 'Exquisite Corpse'.
+    See: https://en.wikipedia.org/wiki/Exquisite_corpse
+    
+    """
 
     def __init__(self, documents):
         super().__init__(documents)
         self.corpses = []
 
     def build(self):
+        """Munge news stories to create an esquisite cadavre. """
         text = ""
         base_index = random.randrange(len(self._documents))
         base = self._documents[base_index]
@@ -58,6 +64,9 @@ class ExquisiteCorpse(Munger):
         print(text)
 
     def save(self):
+        
+        """ Write the cadavre to a file. """
+
         self.filename = datetime.datetime.today().strftime("tmp/exq_%Y%m%d.txt")
         pass
 

@@ -488,12 +488,11 @@ class Aggregator():
 
 if __name__ == "__main__":
     """ run unit tests  """
-    # import unittest
-    # from tests import TestSeleniumScrapers
-    # from tests import TestAggregator
-    # unittest.main()
+    import unittest
+    from tests import TestSeleniumScrapers
+    from tests import TestAggregator
+    unittest.main()
 
-    pass
 
 
 

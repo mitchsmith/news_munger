@@ -38,8 +38,18 @@ print("Done.\n")
 # Classes
 
 class Munger():
+    
+    """
+    Base class for MadLib, ExquisiteCorpse, or other fake news generators.
+    """
 
     def __init__(self, documents):
+        
+        """
+        Declare headline, document, sentence and sub_sentences attrbutes;
+        generate a list of repeated sentence roots
+        """
+
         self._headline = None
         self._documents = documents
         self._sentences = self.find_mungeable_sentences()
@@ -63,6 +73,9 @@ class Munger():
 
 
     def fetch_subtrees(self, lemma):
+
+        """Create a dict of left and right hand children for a given root. """
+
         subtrees = {'left': dict(), 'right': dict()}
         alternatives = []
         if lemma not in self._sentences.keys():
@@ -111,6 +124,12 @@ class Munger():
     
 
     def munge_on_roots(self, sentence_a=None, sentence_b=None):
+        
+        """
+        Join left hand side of sentence a with the right hand side of senence b,
+        or with a randomly chosen sentence with a similar root lemma.
+        """
+        
         if sentence_a:
             s1 = sentence_a
             if sentence_b:
@@ -127,15 +146,8 @@ class Munger():
                     exclude=[(s1[0], s1[1])]
                     )
     
-        #if s2[2] in ['say', 'be']:
-        #    if s1[0] and s2[0]:
-        #        return self.munge_children([s1, s2])
-        #    else:
-        #        return self.munge_on_roots()
-        
         for s in [s1, s2]:
             if s[-1].root.lemma_ == "say" or [t for t in s[3] if t.is_quote]:
-                #return self.munge_sayings(s1, s2)
                 return self.munge_on_roots()
 
         lefts = []
@@ -166,6 +178,9 @@ class Munger():
     
     
     def balance_quotes(self, sentence):
+
+        """Ballance double quotes using spaCy token attributes """
+
         sent = sentence[-1]
         hasq =  [t for t in sent if t.orth_ in ['“', '”']]
         text = ""
@@ -211,6 +226,7 @@ class Munger():
         """
         Extract quoted elements and return a list of sentence tuples
         """
+
         s = sentence[-1]
         hasq = deque([t for t in s if t.orth_ in ['“', '”']])
         if len(hasq) % 2:
@@ -233,6 +249,9 @@ class Munger():
 
 
     def swap_quotes(self, sentence):
+        
+        """Insert randomly root-munged sentences in place of quotations """
+        
         s = sentence
         hasq =  deque([t for t in s[-1] if t.orth_ in ['“', '”']])
         swaps = None
@@ -295,6 +314,11 @@ class Munger():
 
 
     def munge_sayings(self, sentence_a, sentence_b=None):
+        
+        """
+        Munge 'say' sentence by swapping quotiations or by munging children
+        """
+        
         sentences = [sentence_a, sentence_b]
         swaps = None
         for i , s in enumerate(sentences):
@@ -314,11 +338,19 @@ class Munger():
     
     def munge_beings(self, sentence, sentence_b=None):
         
+        """
+        TODO: Need to further investgate how to disambiguate and handle
+        copular, existential and auxilliary uses and agreement. With luck,
+        I'll also gain insights on how to deal with modals.
+        """
 
         return [sentence_a, sentence_b]
     
     
     def munge_children(self, sentence, *args, **kwargs):
+        
+        """Sequentially replace subtree of each child of root """
+
         s = sentence[-1]
         lemma = s.root.lemma_
         workon = ['left', 'right']
@@ -380,6 +412,7 @@ class Munger():
                     pass
 
             if hand == "left":
+                # TOTO: move this to it's own method after figuring out 'be'
                 elements.append(s.root.text_with_ws)
                 if s.root.lemma_ in ['be', 'do', 'have', 'say']:
                     t = 0 # present
@@ -435,7 +468,7 @@ class Munger():
     def picka_sentence(self, doc_id=None, **kwargs):
         
         """
-        
+        Choose a compatible sentence, or a random one.
         """
     
         if doc_id:
@@ -493,7 +526,9 @@ class Munger():
     
     
     def find_mungeable_sentences(self):
-        # Fetch all sentence roots
+
+        """ Fetch all sentence roots and their doc and sent indexes """
+
         s_roots = []
         for d in self._documents:
             s_roots.extend([s.root for s in d.sents])
