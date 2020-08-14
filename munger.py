@@ -29,21 +29,13 @@ from helpers import find_duplicates, kill_firefox, irreg_inflect
 from helpers import GENERIC_TITLES, FEMININE_TITLES, MASCULINE_TITLES, PRESIDENTIOSITUDE
 from gtts import  list_voices, text_to_mp3
 
+print("\nLoading spaCy English vocabulary with medium word vectors . . .")
 nlp = spacy.load("en_core_web_md")
+print("Done.\n")
 
-try:
-    Doc.set_extension("title", default=None)
-    Doc.set_extension("byline", default=None)
-    Doc.set_extension("timestamp", default=None)
-    Doc.set_extension("dateline", default=None)
-    Doc.set_extension("people", default=None)
-except ValueError:
-    # Reloading pickled
-    pass
 
 
 # Classes
-
 
 class Munger():
 
@@ -1046,16 +1038,50 @@ class DocumentCatalog():
     
     """Collections of named Entities extracted from across muntiple docs """
 
-    def __init__(self, document_list, *args, **kwargs):
-        if type(document_list) != list:
-            raise TypeError
-        self.documents = document_list
+    def __init__(self, *args, **kwargs):
+        
+        """ """
+        
+        try:
+            Doc.set_extension("title", default=None)
+            Doc.set_extension("byline", default=None)
+            Doc.set_extension("timestamp", default=None)
+            Doc.set_extension("dateline", default=None)
+            Doc.set_extension("people", default=None)
+        except ValueError:
+            # Reloading pickled
+            pass
+
+        self.aggregator = load_or_refresh_ag()
         self.created_at = datetime.datetime.now().isoformat()
+        self.documents = []
         self.people = []
         self.orgs = []
         self.gpes = []
         self.subj_np_forms = {}
         self.np_complement_forms = {}
+
+        dateline_pattern = re.compile(r"^([A-Z][A-Z ,][^—]*?— )", flags=re.MULTILINE)
+    
+        for i, story in enumerate(self.aggregator.stories):
+            text = story.content["text"]
+            dateline = None
+            try:
+                dateline = dateline_pattern.search(text)[0]
+            except:
+                pass
+
+            self.documents.append(
+                            strip_bottoms(
+                                    [(nlp(dateline_pattern.sub("", text)))]
+                                    )[0]
+                            )
+                                    
+            self.documents[i]._.title = story.title
+            self.documents[i]._.byline = story.byline
+            self.documents[i]._.dateline = dateline
+            self.documents[i]._.timestamp = story.timestamp
+
 
     def collect_people(self):
 
@@ -1240,11 +1266,12 @@ def strip_bottoms(documents):
     """  """
     stripped = []
 
-    for i, d in enumerate(documents):
+    for d in documents:
+
         try:
-            end = [s.root.i for s in d.sents if s.root.orth_ == "_"][0] -2
+            end = [s.root.i for s in d.sents if s.root.orth_ == "_"][0] - 2
         except IndexError:
-            end = -1
+            end = - 1
         stripped.append(d[:end].as_doc())
 
     return stripped
@@ -1257,9 +1284,11 @@ def traverse(node):
         return (node.i, node)
 
 
+
 def load_or_refresh_ag(topic_list=['Sports', 'Politics']):
-    # cached = datetime.datetime.today().strftime("tmp/ag_%Y%m%d.pkl")
-    cached = "./tmp/ag_20200808.pkl"
+
+    cached = datetime.datetime.today().strftime("tmp/ag_%Y%m%d.pkl")
+    # cached = "./tmp/ag_20200808.pkl"
     if os.path.isfile(cached):
         with open(cached, "rb") as pkl:
             ag = pickle.load(pkl)
@@ -1289,48 +1318,5 @@ def load_or_refresh_ag(topic_list=['Sports', 'Politics']):
             pickle.dump(ag, pkl)
     
     return ag
-
-
-
-# Execute on import
-
-ag = load_or_refresh_ag(topic_list=[
-                                    'Sports',
-                                    'Entertainment',
-                                    'Lifestyle',
-                                    'Oddities',
-                                    'Technology',
-                                    'Business',
-                                    'International News',
-                                    'Politics',
-                                    'Religion',
-                                    ]
-                        )
-
-docs = []
-dateline_pattern = re.compile(r"^([A-Z][A-Z ,][^—]*?— )", flags=re.MULTILINE)
-for i, story in enumerate(ag.stories):
-    # text = "\n".join(story.content)
-    text = story.content["text"]
-    dateline = None
-    try:
-        dateline = dateline_pattern.search(text)[0]
-    except:
-        pass
-    docs.append((nlp(dateline_pattern.sub("", text))))
-    docs[i]._.title = story.title
-    docs[i]._.byline = story.byline
-    docs[i]._.dateline = dateline
-    docs[i]._.timestamp = story.timestamp
-
-catalog = DocumentCatalog(strip_bottoms(docs))
-# del ag
-del docs
-
-# Unit Tests #
-
-if __name__ == "__main__":
-    pass
-
 
 

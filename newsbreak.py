@@ -1,7 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from munger import *
+import argparse
+parser = argparse.ArgumentParser()
+parser.parse_args()
+
+import os
+import re
+import datetime
+import munger
+from munger import Aggregator, DocumentCatalog, Munger, load_or_refresh_ag, nlp
+
+
 
 ## Classes ##
 
@@ -58,5 +68,21 @@ class ExquisiteCorpse(Munger):
     def __repr__(self):
         return "<ExquisiteCorpse: {}>".format(self.headline)
 
+
+
+
+
+if __name__ == "__main__":
+    
+    """   
+    
+    """
+
+    catalog = DocumentCatalog()
+
+    # Unit Tests #
+
+    """
+    """
 
 
