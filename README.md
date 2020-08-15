@@ -56,8 +56,8 @@ also an auto-installer available via PyPi:
 but be sure to edit the Pipfile first.
 
     
-    cd news_munger
-    pipenv install
+        cd news_munger
+        pipenv install
 
 
 5. **From the terminal, run newsbreak.py** - This will fetch today's headlines
