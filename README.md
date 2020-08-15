@@ -12,6 +12,7 @@ The jury is still out.
 # Main Conponents:
 
 **scrapers.py** 
+
 Provides extensible web scrapers for wikipedia and a variety of news sites.
 Where possible, light-weight bs4-based scrapers are preferred, but for sites
 such as google and APNews.com that make heavy use javascipt to embed and
@@ -19,6 +20,7 @@ diplay text content, this module provides Selenium/gekodriver based scrapers
 via the HeavyScraper base class.
 
 **munger.py**
+
 This module provides all of the NLP functionality using both NLTK and spaCy.
 Its main components are DocumentCatalog, which collects and indexes news 
 articles after performing the initial tokenization, pos-tagging, NER, and
@@ -27,10 +29,12 @@ methods for dismantling the phrasal constituents of sentences and recombining
 them in hopefully amusing ways. 
 
 **newsbreak.py**
+
 Provides Munger subclasses MadLib and ExquisiteCorpse, as well as the cli.
 As of now, odly ExquisiteCorpse if operational; the cli is in progress.
 
-##Caveat:
+## Caveat:
+
 This program relies on a couple of dependencies, especially Selenium and
 gekodriver, but also the spaCy language model that includes word vectors,
 which are both large and resource intensive. While it would be fun to have
@@ -38,15 +42,21 @@ built it as a web app, creating a container for it within the limits of any
 of the free-tier hosting I'm aware of doesn't seem feasable.
 
 # Instalation
+
 1. **Make sure Firefox is installed** - Selenium will run it headless and
 in incognito mode.
+
 2. **Install gekodriver** - Use the method appropriate to your OS. There is
 also an auto-installer available via PyPi:
 [https://pypi.org/project/geckodriver-autoinstaller/](https://pypi.org/project/geckodriver-autoinstaller/)
+
 3. **Clone this repo**
+
 4. **Install in a virtualenv with python 3.8** - Python 3.6.x will also work,
 but be sure to edit the Pipfile first.
+
     pipenv install
+
 5. **From the terminal, run newsbreak.py** - This will fetch today's headlines
 and aggregate around 16 of the top stories. Be patient, this can take a while.
 Once the program exits, subsequent instantiation of DocumentCatalog will load
@@ -57,13 +67,16 @@ The newsbreak cli is not yet written. To generate an Exquisite Corpse in the
 python shell, import everything from newsbreak.py, instantiate a new 
 DocumentCatalog, then an ExquisiteCorpse object, then call it's build method:
 
+    from newsbreak import *
+    
     catalog = DocumentCatalog()
     corpse = ExquisiteCorpse(catalog._documents)
     corpse.build()
 
 
 
-
+# Help
+The docstrings should be fairly complete and accurate at this point.
 
 
 CLASSES
