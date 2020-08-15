@@ -9,7 +9,7 @@ as it is currently practiced.
 
 The jury is still out.
 
-# Main Conponents:
+# Main Components:
 
 **scrapers.py** 
 
@@ -31,7 +31,7 @@ them in hopefully amusing ways.
 **newsbreak.py**
 
 Provides Munger subclasses MadLib and ExquisiteCorpse, as well as the cli.
-As of now, odly ExquisiteCorpse if operational; the cli is in progress.
+As of now, only ExquisiteCorpse if operational; the cli is in progress.
 
 ## Caveat:
 
@@ -55,7 +55,10 @@ also an auto-installer available via PyPi:
 4. **Install in a virtualenv with python 3.8** - Python 3.6.x will also work,
 but be sure to edit the Pipfile first.
 
+    
+    cd news_munger
     pipenv install
+
 
 5. **From the terminal, run newsbreak.py** - This will fetch today's headlines
 and aggregate around 16 of the top stories. Be patient, this can take a while.
