@@ -1320,7 +1320,20 @@ def traverse(node):
 
 
 
-def load_or_refresh_ag(topic_list=['Sports', 'Politics']):
+def load_or_refresh_ag(topic_list=[
+                                    "Sports",
+                                    "Politics",
+                                    "Entertainment",
+                                    "Lifestyle",
+                                    "Oddities",
+                                    "Travel",
+                                    "Technology",
+                                    "Business",
+                                    "U.S. News",
+                                    "International News",
+                                    "Politics",
+                                    "Religion",
+                                    ]):
 
     cached = datetime.datetime.today().strftime("tmp/ag_%Y%m%d.pkl")
     # cached = "./tmp/ag_20200808.pkl"

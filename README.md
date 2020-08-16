@@ -73,7 +73,7 @@ DocumentCatalog, then an ExquisiteCorpse object, then call it's build method:
     from newsbreak import *
     
     catalog = DocumentCatalog()
-    corpse = ExquisiteCorpse(catalog._documents)
+    corpse = ExquisiteCorpse(catalog.documents)
     corpse.build()
 
 
