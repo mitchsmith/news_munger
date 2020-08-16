@@ -8,6 +8,7 @@ parser.parse_args()
 import os
 import re
 import datetime
+import random
 import munger
 from munger import Aggregator, DocumentCatalog, Munger, load_or_refresh_ag, nlp
 
