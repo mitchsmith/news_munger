@@ -60,7 +60,13 @@ but be sure to edit the Pipfile first.
         pipenv install
 
 
-5. **From the terminal, run newsbreak.py** - This will fetch today's headlines
+5. **From the terminal, download spacy's English model with word vectors:
+
+
+        python -m spacy download en_core_web_md
+
+
+6. **From the terminal, run newsbreak.py** - This will fetch today's headlines
 and aggregate around 16 of the top stories. Be patient, this can take a while.
 Once the program exits, subsequent instantiation of DocumentCatalog will load
 the contents from a pickle stored in tmp/
