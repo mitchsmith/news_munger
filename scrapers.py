@@ -17,19 +17,20 @@ from helpers import kill_firefox, fix_double_quotes
 
 ### Bs4 based scrapers ###
 
-class WikiPerson():
-    
+
+class WikiPerson:
+
     """Information about a person entity gleaned from Wikipedia """
-    
+
     def __init__(self, name_or_url):
-        if re.search(r"^http", name_or_url):      
+        if re.search(r"^http", name_or_url):
             self.url = name_or_url
-            self.name = re.sub(r'_', " ", self.url.split(r'\/')[-1])
+            self.name = re.sub(r"_", " ", self.url.split(r"\/")[-1])
         else:
             self.name = name_or_url
             self.url = "https://wikipedia.org/wiki/{}".format(
-                            re.sub(r"\s+", "_", name_or_url)
-                            )
+                re.sub(r"\s+", "_", name_or_url)
+            )
         request = requests.get(self.url)
         self.found = False
         self.fictional = False
@@ -39,12 +40,12 @@ class WikiPerson():
         self.died = None
         self.bio = None
         self.bold = None
-        
+
         if request.status_code == 200:
-            soup = BeautifulSoup(request.text, 'html.parser')
-            self.canonical_name = soup.find('h1').text
-            for i, p in enumerate(soup.findAll('p')):
-                self.bold = [b.text for b in p.findAll('b')]
+            soup = BeautifulSoup(request.text, "html.parser")
+            self.canonical_name = soup.find("h1").text
+            for i, p in enumerate(soup.findAll("p")):
+                self.bold = [b.text for b in p.findAll("b")]
                 if self.bold:
                     self.found = True
                     self.bio = p
@@ -56,7 +57,7 @@ class WikiPerson():
     @property
     def full_name(self):
         if self.found:
-            return self.bio.find('b').text
+            return self.bio.find("b").text
         return None
 
     @property
@@ -72,10 +73,9 @@ class WikiPerson():
     def age(self):
         if self.found and self.birth_date:
             age = datetime.datetime.now() - datetime.datetime.strptime(
-                    self.birth_date,
-                    "%B %d, %Y"
-                    )
-            return int( age.days // 365.25)
+                self.birth_date, "%B %d, %Y"
+            )
+            return int(age.days // 365.25)
 
         return "Unknown"
 
@@ -83,22 +83,22 @@ class WikiPerson():
         return "<WikiPerson {}>".format(self.full_name)
 
 
-class WikiOrg():
-    
+class WikiOrg:
+
     """Information about an orgaization entity gleaned from Wikipedia """
-    
+
     def __init__(self, name_or_url):
         self.determiner = False
-        if re.search(r"^http", name_or_url):      
+        if re.search(r"^http", name_or_url):
             self.url = name_or_url
-            self.name = re.sub(r'_', " ", self.url.split(r'\/')[-1])
+            self.name = re.sub(r"_", " ", self.url.split(r"\/")[-1])
         else:
-            if re.search(r'^the\s+', name_or_url, flags=re.IGNORECASE):
+            if re.search(r"^the\s+", name_or_url, flags=re.IGNORECASE):
                 self.determiner = True
-            self.name = re.sub(r'^the\s+', '', name_or_url, flags=re.IGNORECASE)
+            self.name = re.sub(r"^the\s+", "", name_or_url, flags=re.IGNORECASE)
             self.url = "https://wikipedia.org/wiki/{}".format(
-                            re.sub(r"\s+", "_", self.name)
-                            )   
+                re.sub(r"\s+", "_", self.name)
+            )
         request = requests.get(self.url)
         self.canonical_name = None
         self.abbr = None
@@ -108,43 +108,43 @@ class WikiOrg():
         self.alt_url = None
         self.description = None
         self.bold = None
-        
+
         if request.status_code == 200:
-            soup = BeautifulSoup(request.text, 'html.parser')
-            self.canonical_name = soup.find('h1').text
-            for i, p in enumerate(soup.findAll('p')):
-                self.bold = [b.text for b in p.findAll('b')]
+            soup = BeautifulSoup(request.text, "html.parser")
+            self.canonical_name = soup.find("h1").text
+            for i, p in enumerate(soup.findAll("p")):
+                self.bold = [b.text for b in p.findAll("b")]
                 if self.canonical_name and self.canonical_name in self.bold:
                     self.found = True
                     self.description = p
                     try:
-                        if re.search(r'^[A-Z\.]+', self.bold[1]):
+                        if re.search(r"^[A-Z\.]+", self.bold[1]):
                             self.abbr = self.bold[1]
                     except:
                         pass
                     break
             del soup
-                    
+
     def __repr__(self):
         return "<WikiOrg {}>".format(self.canonical_name)
 
 
-class WikiGPE():
-    
+class WikiGPE:
+
     """Information about an geopolitical entity gleaned from Wikipedia """
-    
+
     def __init__(self, name_or_url):
         self.determiner = False
-        if re.search(r"^http", name_or_url):      
+        if re.search(r"^http", name_or_url):
             self.url = name_or_url
-            self.name = re.sub(r'_', " ", self.url.split(r'\/')[-1])
+            self.name = re.sub(r"_", " ", self.url.split(r"\/")[-1])
         else:
-            if re.search(r'^the\s+', name_or_url, flags=re.IGNORECASE):
+            if re.search(r"^the\s+", name_or_url, flags=re.IGNORECASE):
                 self.determiner = True
-            self.name = re.sub(r'^the\s+', '', name_or_url, flags=re.IGNORECASE)
+            self.name = re.sub(r"^the\s+", "", name_or_url, flags=re.IGNORECASE)
             self.url = "https://wikipedia.org/wiki/{}".format(
-                            re.sub(r"\s+", "_", self.name)
-                            )   
+                re.sub(r"\s+", "_", self.name)
+            )
         request = requests.get(self.url)
         self.canonical_name = None
         self.abbr = None
@@ -153,32 +153,30 @@ class WikiGPE():
         self.ambiguous = False
         self.alt_url = None
         self.description = None
-        self.bold = []       
+        self.bold = []
         if request.status_code == 200:
-            soup = BeautifulSoup(request.text, 'html.parser')
-            self.canonical_name = soup.find('h1').text
-            for i, p in enumerate(soup.findAll('p')):
-                self.bold = [b.text for b in p.findAll('b')]
+            soup = BeautifulSoup(request.text, "html.parser")
+            self.canonical_name = soup.find("h1").text
+            for i, p in enumerate(soup.findAll("p")):
+                self.bold = [b.text for b in p.findAll("b")]
                 if self.canonical_name and self.canonical_name in self.bold:
                     self.found = True
                     self.description = p
                     try:
-                        if re.search(r'^[A-Z\.]+', self.bold[1]):
+                        if re.search(r"^[A-Z\.]+", self.bold[1]):
                             self.abbr = self.bold[1]
                     except:
                         pass
                     break
             del soup
-                    
+
     def __repr__(self):
         return "<WikiGPE {}>".format(self.canonical_name)
 
 
-
-
-class APArticle():
+class APArticle:
     """ AP Article contents fetched and scraped from the specified url."""
-    
+
     def __init__(self, url):
         """ Fetch and scrape news article 
 
@@ -198,43 +196,36 @@ class APArticle():
             by_pat = re.compile(r"bylines")
             time_pat = re.compile(r"timestamp", flags=re.IGNORECASE)
             story_pat = re.compile(
-                    r"^.*?storyHTML\"\:\"\\+u003cp>(.*)\}?",
-                    flags=re.MULTILINE
-                    )
-            soup = BeautifulSoup(request.text, 'html.parser')
-            self._title = soup.find('title').text
-            for span in (s for s in soup.find_all('span') if 'class' in s.attrs):
-                for class_name in span.attrs['class']:
+                r"^.*?storyHTML\"\:\"\\+u003cp>(.*)\}?", flags=re.MULTILINE
+            )
+            soup = BeautifulSoup(request.text, "html.parser")
+            self._title = soup.find("title").text
+            for span in (s for s in soup.find_all("span") if "class" in s.attrs):
+                for class_name in span.attrs["class"]:
                     if by_pat.search(class_name):
                         self._byline = span.text
                     if time_pat.search(class_name):
                         self._timestamp = span.attrs["data-source"]
             print("Title: {}".format(self._title))
             print("Byline: {}".format(self._byline))
-        
-            story_html = re.sub(r'\\+u003c', '<', story_pat.search(request.text)[1])
-            story_html = re.sub(r'\\+', '', story_html)
-            soup = BeautifulSoup(story_html, 'html.parser')
-            paragraphs = [
-                    fix_double_quotes(p.text)
-                    for p
-                    in soup.find_all('p')
-                    ]
+
+            story_html = re.sub(r"\\+u003c", "<", story_pat.search(request.text)[1])
+            story_html = re.sub(r"\\+", "", story_html)
+            soup = BeautifulSoup(story_html, "html.parser")
+            paragraphs = [fix_double_quotes(p.text) for p in soup.find_all("p")]
 
             end = sorted(
-                    [p for p in paragraphs if re.match(r"^_+$", p)],
-                    key=lambda x: len(x)
-                    )[0]
+                [p for p in paragraphs if re.match(r"^_+$", p)], key=lambda x: len(x)
+            )[0]
             self._content = {
-                    "html": story_html,
-                    "text": "\n".join(paragraphs[:paragraphs.index(end)])
-                    }
-
+                "html": story_html,
+                "text": "\n".join(paragraphs[: paragraphs.index(end)]),
+            }
 
     @property
     def title(self):
         return self._title
-    
+
     @property
     def byline(self):
         return self._byline
@@ -246,15 +237,15 @@ class APArticle():
     @property
     def content(self):
         return self._content
-    
+
     def __repr__(self):
         return "<APArticle object: title={}, timestamp={}, url={}>".format(
-                self.title, self.timestamp, self.url
-                )
-
+            self.title, self.timestamp, self.url
+        )
 
 
 ### Selenium based scrapers ###
+
 
 class HeavyScraper:
     """A resource intensive, selemium-based Soup-Nazi countermeasure
@@ -273,7 +264,7 @@ class HeavyScraper:
         self.driver.implicitly_wait(3)
 
     def __repr__(self):
-        return '<HeavyScraper object: url={}>'.format(self.url)
+        return "<HeavyScraper object: url={}>".format(self.url)
 
 
 class Trends(HeavyScraper):
@@ -287,19 +278,18 @@ class Trends(HeavyScraper):
         super().__init__(self.url)
         self.driver.get(self.url)
         self._trends = [
-                (topic.text.split(
-                                  "\n")[1],
-                                  topic.text.split("\n")[2],
-                                  topic.text.split("\n")[6]
-                                 )
-                for topic
-                in self.driver.find_elements_by_class_name('feed-item')
-            ]
+            (
+                topic.text.split("\n")[1],
+                topic.text.split("\n")[2],
+                topic.text.split("\n")[6],
+            )
+            for topic in self.driver.find_elements_by_class_name("feed-item")
+        ]
         self.driver.close()
         self.driverquit()
         kill_firefox()
         del self.driver
-    
+
     @property
     def trends(self):
         return self._trends
@@ -307,16 +297,17 @@ class Trends(HeavyScraper):
     @property
     def ngrams(self):
         return [n[0] for n in self._trends]
- 
+
     def __repr__(self):
-        return '<Trends object: url={}>'.format(self.url)
+        return "<Trends object: url={}>".format(self.url)
 
 
 class APHeadlines(HeavyScraper):
     """ Scrape AP News Topics and optionally retrieve headlines by topic  """
-    
+
     topic_list = []
     url = "https://apnews.com/"
+
     def __init__(self, topic_id=0):
         """ Fetch topics and immediatly close the marionette driver.
         
@@ -326,14 +317,14 @@ class APHeadlines(HeavyScraper):
         super().__init__(self.url)
         self.driver.get(self.url)
         self.headlines = []
-        self.ap_nav = self.driver.find_elements_by_class_name('nav-action')
+        self.ap_nav = self.driver.find_elements_by_class_name("nav-action")
         print("Got AP Nav")
         time.sleep(3)
         self.ap_nav[1].click()
         time.sleep(3)
         self.topic_nav = self.driver.find_element_by_class_name(
-                'TopicsDropdown'
-                ).find_elements_by_tag_name('li')
+            "TopicsDropdown"
+        ).find_elements_by_tag_name("li")
         # create_topic_list
         for index, li in enumerate(self.topic_nav):
             if index > 0:
@@ -342,47 +333,48 @@ class APHeadlines(HeavyScraper):
         if topic_id > 0:
             topic = self.topic_nav[topic_id]
             time.sleep(3)
-            if not topic.find_element_by_tag_name('a').is_displayed():
+            if not topic.find_element_by_tag_name("a").is_displayed():
                 self.ap_nav[1].click()
                 time.sleep(1)
-            print("Navigating to {}".format(
-                    topic.find_element_by_tag_name('a').get_attribute('href'))
+            print(
+                "Navigating to {}".format(
+                    topic.find_element_by_tag_name("a").get_attribute("href")
                 )
-            topic.find_element_by_tag_name('a').click()
+            )
+            topic.find_element_by_tag_name("a").click()
             time.sleep(3)
             self.url = self.driver.current_url
             print("{} is loaded; retrieving headlines ...".format(self.url))
-            stories = self.driver.find_elements_by_class_name('FeedCard')
+            stories = self.driver.find_elements_by_class_name("FeedCard")
             for story in stories:
                 try:
                     loc = story.location_once_scrolled_into_view
                     txt = story.text
-                    href = story.find_element_by_tag_name('a').get_attribute('href')
+                    href = story.find_element_by_tag_name("a").get_attribute("href")
                     self.headlines.append((self.driver.title, href, txt))
                 except:
                     print("Failed to load headline")
                     pass
-        
+
         self.driver.close()
         self.driver.quit()
         kill_firefox
 
     def __repr__(self):
-        return '<APHeadlines object: url={}>'.format(self.url)
+        return "<APHeadlines object: url={}>".format(self.url)
 
 
-
-class Aggregator():
+class Aggregator:
     """ Collect News Headlines and Stories  """
 
     def __init__(self):
-        """ Delcare private vars and retrieve the topic list  """  
+        """ Delcare private vars and retrieve the topic list  """
 
-        self._topics =[]
+        self._topics = []
         self._headlines = []
         self._stories = []
         try:
-            if os.path.isfile('topics.json'):
+            if os.path.isfile("topics.json"):
                 self.restore_ap_topics()
             else:
                 self.refresh_ap_topics()
@@ -391,7 +383,7 @@ class Aggregator():
 
     def refresh_ap_topics(self):
         """ Collects the list of AP News topics and caches it """
-        
+
         try:
             t = APHeadlines()
             self._topics = t.topic_list
@@ -401,26 +393,25 @@ class Aggregator():
 
     def cache_ap_topics(self):
         """ Dumps self._.topics too json file  """
-        
-        with open('topics.json', 'w+') as outfile:
+
+        with open("topics.json", "w+") as outfile:
             json.dump(self._topics, outfile)
 
     def restore_ap_topics(self):
         """ Reads previously cached topics back into self._topics """
-        
+
         try:
-            with open('topics.json', 'r') as infile:
+            with open("topics.json", "r") as infile:
                 self._topics = json.load(infile)
         except Exception as ex:
             print("Can't read from 'topics.json': {}".format(ex))
-
 
     def collect_ap_headlines(self):
         """ Collects AP Headlines by topic in self._hadlines.
         
         Retruns self._headlines
         """
-        
+
         self._headlines = []
         for topic in self._topics:
             try:
@@ -431,23 +422,23 @@ class Aggregator():
                 kill_firefox()
                 time.sleep(3)
                 continue
-        
+
         self.cache_headlines()
         return self._headlines
 
     def cache_headlines(self):
         """ Dumps self._headlines to json file  """
-        
-        if os.path.exists('headlines.json'):
-            os.rename('headlines.json', 'headlines.bak')
-        with open('headlines.json', 'w+') as outfile:
+
+        if os.path.exists("headlines.json"):
+            os.rename("headlines.json", "headlines.bak")
+        with open("headlines.json", "w+") as outfile:
             json.dump(self._headlines, outfile)
 
     def restore_headlines(self):
         """ Reads previously cached headlines back into self._headlines """
-        
+
         try:
-            with open('headlines.json', 'r') as infile:
+            with open("headlines.json", "r") as infile:
                 self._headlines = json.load(infile)
         except Exception as ex:
             print("Can't read from 'headlines.json': {}".format(ex))
@@ -458,20 +449,20 @@ class Aggregator():
         ARGS: url
         
         """
-        
+
         if re.search(r"apnews", url):
             try:
                 article = APArticle(url)
                 self._stories.append(article)
             except Exception as ex:
-                #kill_firefox()
+                # kill_firefox()
                 time.sleep(3)
                 print("Unable to retrieve article", ex)
 
     @property
     def topics(self):
         return self._topics
-    
+
     @property
     def headlines(self):
         return self._headlines
@@ -482,8 +473,8 @@ class Aggregator():
 
     def __repr__(self):
         return "<Aggregator object - properties: {}>".format(
-                "'topics', 'headlines', 'stories'"
-                )
+            "'topics', 'headlines', 'stories'"
+        )
 
 
 if __name__ == "__main__":
@@ -491,10 +482,5 @@ if __name__ == "__main__":
     import unittest
     from tests import TestSeleniumScrapers
     from tests import TestAggregator
+
     unittest.main()
-
-
-
-
-
-
