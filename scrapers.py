@@ -6,13 +6,11 @@
 import os
 import re
 import time
-import datetime
 import json
 import requests
-from bs4 import BeautifulSoup, UnicodeDammit
+from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
-from collections import deque
 from helpers import kill_firefox, fix_double_quotes
 
 ### Bs4 based scrapers ###
@@ -33,51 +31,43 @@ class WikiPerson:
             )
         request = requests.get(self.url)
         self.found = False
-        self.fictional = False
-        self.ambiguous = False
-        self.alt_url = None
-        self.born = None
-        self.died = None
+        self.canonical_name = None
         self.bio = None
-        self.bold = None
 
         if request.status_code == 200:
             soup = BeautifulSoup(request.text, "html.parser")
             self.canonical_name = soup.find("h1").text
-            for i, p in enumerate(soup.findAll("p")):
-                self.bold = [b.text for b in p.findAll("b")]
-                if self.bold:
+            for element in soup.findAll("p"):
+                bold = [b.text for b in element.findAll("b")]
+                if bold:
                     self.found = True
-                    self.bio = p
-                    if self.canonical_name not in self.bold:
-                        self.canonical_name = self.bold[0]
+                    self.bio = element
+                    if self.canonical_name not in bold:
+                        self.canonical_name = bold[0]
                     break
             del soup
 
     @property
     def full_name(self):
+
+        """Person's full name """
+
         if self.found:
             return self.bio.find("b").text
         return None
 
     @property
     def gender(self):
+
+        """Person's gender (if discoverable) """
+
         if re.search(r"\s[Ss]he\s|\s[Hh]er\s", self.bio.text):
             return "Female"
-        elif re.search(r"\s+[Hh]e\s|\s[Hh]is\s", self.bio.text):
+
+        if re.search(r"\s+[Hh]e\s|\s[Hh]is\s", self.bio.text):
             return "Male"
-        else:
-            return "Unspecified"
 
-    @property
-    def age(self):
-        if self.found and self.birth_date:
-            age = datetime.datetime.now() - datetime.datetime.strptime(
-                self.birth_date, "%B %d, %Y"
-            )
-            return int(age.days // 365.25)
-
-        return "Unknown"
+        return "Unspecified"
 
     def __repr__(self):
         return "<WikiPerson {}>".format(self.full_name)
@@ -87,7 +77,16 @@ class WikiOrg:
 
     """Information about an orgaization entity gleaned from Wikipedia """
 
+    # pylint: disable=too-many-instance-attributes
+    # Eight is reasonable in this case.
+
+    # pylint: disable=too-few-public-methods
+    # Wiki lookups are like french eggs: one is 'un oeuf'
+
     def __init__(self, name_or_url):
+
+        """Scrape available org info from wikipedia """
+
         self.determiner = False
         if re.search(r"^http", name_or_url):
             self.url = name_or_url
@@ -99,30 +98,28 @@ class WikiOrg:
             self.url = "https://wikipedia.org/wiki/{}".format(
                 re.sub(r"\s+", "_", self.name)
             )
-        request = requests.get(self.url)
         self.canonical_name = None
         self.abbr = None
         self.found = False
-        self.fictional = False
-        self.ambiguous = False
-        self.alt_url = None
         self.description = None
-        self.bold = None
+
+        request = requests.get(self.url)
 
         if request.status_code == 200:
             soup = BeautifulSoup(request.text, "html.parser")
             self.canonical_name = soup.find("h1").text
-            for i, p in enumerate(soup.findAll("p")):
-                self.bold = [b.text for b in p.findAll("b")]
+            for element in soup.findAll("p"):
+                self.bold = [b.text for b in element.findAll("b")]
                 if self.canonical_name and self.canonical_name in self.bold:
                     self.found = True
-                    self.description = p
+                    self.description = element
                     try:
                         if re.search(r"^[A-Z\.]+", self.bold[1]):
                             self.abbr = self.bold[1]
-                    except:
+                    except IndexError:
                         pass
                     break
+
             del soup
 
     def __repr__(self):
@@ -133,7 +130,13 @@ class WikiGPE:
 
     """Information about an geopolitical entity gleaned from Wikipedia """
 
+    # pylint: disable=too-few-public-methods
+    # Wiki lookups are like french eggs: one is 'un oeuf'
+
     def __init__(self, name_or_url):
+
+        """Scrape available geo-political entity info fromm wikipedia """
+
         self.determiner = False
         if re.search(r"^http", name_or_url):
             self.url = name_or_url
@@ -145,29 +148,28 @@ class WikiGPE:
             self.url = "https://wikipedia.org/wiki/{}".format(
                 re.sub(r"\s+", "_", self.name)
             )
-        request = requests.get(self.url)
         self.canonical_name = None
         self.abbr = None
         self.found = False
-        self.fictional = False
-        self.ambiguous = False
-        self.alt_url = None
         self.description = None
-        self.bold = []
+
+        request = requests.get(self.url)
         if request.status_code == 200:
             soup = BeautifulSoup(request.text, "html.parser")
             self.canonical_name = soup.find("h1").text
-            for i, p in enumerate(soup.findAll("p")):
-                self.bold = [b.text for b in p.findAll("b")]
-                if self.canonical_name and self.canonical_name in self.bold:
+            for element in enumerate(soup.findAll("p")):
+                bold = [b.text for b in element.findAll("b")]
+                if self.canonical_name and self.canonical_name in bold:
                     self.found = True
-                    self.description = p
+                    self.description = element
                     try:
-                        if re.search(r"^[A-Z\.]+", self.bold[1]):
-                            self.abbr = self.bold[1]
-                    except:
+                        if re.search(r"^[A-Z\.]+", bold[1]):
+                            self.abbr = bold[1]
+                    except IndexError:
                         pass
+
                     break
+
             del soup
 
     def __repr__(self):
@@ -175,16 +177,16 @@ class WikiGPE:
 
 
 class APArticle:
+
     """ AP Article contents fetched and scraped from the specified url."""
 
     def __init__(self, url):
-        """ Fetch and scrape news article 
+
+        """Fetch and scrape news article
 
         ARGS:
             url (required)
-
         """
-
         self.url = url
         self._title = None
         self._byline = None
@@ -214,9 +216,7 @@ class APArticle:
             soup = BeautifulSoup(story_html, "html.parser")
             paragraphs = [fix_double_quotes(p.text) for p in soup.find_all("p")]
 
-            end = sorted(
-                [p for p in paragraphs if re.match(r"^_+$", p)], key=lambda x: len(x)
-            )[0]
+            end = sorted([p for p in paragraphs if re.match(r"^_+$", p)], key=len)[0]
             self._content = {
                 "html": story_html,
                 "text": "\n".join(paragraphs[: paragraphs.index(end)]),
@@ -224,18 +224,25 @@ class APArticle:
 
     @property
     def title(self):
+
+        """Article title (headline) """
         return self._title
 
     @property
     def byline(self):
+
+        """Article byline """
         return self._byline
 
     @property
     def timestamp(self):
+
+        """Artice timestamp """
         return self._timestamp
 
     @property
     def content(self):
+        """Dict containing the article's text and html """
         return self._content
 
     def __repr__(self):
@@ -248,13 +255,19 @@ class APArticle:
 
 
 class HeavyScraper:
+
     """A resource intensive, selemium-based Soup-Nazi countermeasure
 
     (Base class for scrapers requiring gekodriver instead of Beautiful Soup)
     """
 
+    # pylint: disable=too-few-public-methods
+    # These scrapers are meant to be instantiated once and discarded
+
     def __init__(self, url=None):
+
         """ARGS: url ; DEFAULT: None """
+
         self.url = url
         options = Options()
         options.headless = True
@@ -268,13 +281,14 @@ class HeavyScraper:
 
 
 class Trends(HeavyScraper):
+
     """Top Google Search terms scraped from Google Trends"""
 
     url = "https://trends.google.com/trends/trendingsearches/daily?geo=US"
 
     def __init__(self):
-        """ Fetch search terms and immediately close the marionette driver"""
 
+        """ Fetch search terms and immediately close the marionette driver"""
         super().__init__(self.url)
         self.driver.get(self.url)
         self._trends = [
@@ -286,16 +300,18 @@ class Trends(HeavyScraper):
             for topic in self.driver.find_elements_by_class_name("feed-item")
         ]
         self.driver.close()
-        self.driverquit()
+        self.driver.quit()
         kill_firefox()
         del self.driver
 
     @property
     def trends(self):
+        """List of tuples containing data scraped fro feet-items """
         return self._trends
 
     @property
     def ngrams(self):
+        """Trending colocations fro google searches """
         return [n[0] for n in self._trends]
 
     def __repr__(self):
@@ -303,14 +319,19 @@ class Trends(HeavyScraper):
 
 
 class APHeadlines(HeavyScraper):
+
     """ Scrape AP News Topics and optionally retrieve headlines by topic  """
+
+    # pylint: disable=too-few-public-methods
+    # These scrapers are meant to be instantiated once and discarded
 
     topic_list = []
     url = "https://apnews.com/"
 
     def __init__(self, topic_id=0):
-        """ Fetch topics and immediatly close the marionette driver.
-        
+
+        """Fetch topics and immediatly close the marionette driver.
+
         If the topic_id arg is supplied, headlines filed under that
         topic are also retrieved before closing the marionette driver.
         """
@@ -326,9 +347,9 @@ class APHeadlines(HeavyScraper):
             "TopicsDropdown"
         ).find_elements_by_tag_name("li")
         # create_topic_list
-        for index, li in enumerate(self.topic_nav):
+        for index, element in enumerate(self.topic_nav):
             if index > 0:
-                self.topic_list.append((index, li.text))
+                self.topic_list.append((index, element.text))
 
         if topic_id > 0:
             topic = self.topic_nav[topic_id]
@@ -348,23 +369,26 @@ class APHeadlines(HeavyScraper):
             stories = self.driver.find_elements_by_class_name("FeedCard")
             for story in stories:
                 try:
-                    loc = story.location_once_scrolled_into_view
-                    txt = story.text
-                    href = story.find_element_by_tag_name("a").get_attribute("href")
-                    self.headlines.append((self.driver.title, href, txt))
-                except:
-                    print("Failed to load headline")
-                    pass
+                    # pylint: disable=broad-except
+                    # These are triggered by ads and countermeasures
+                    # no need to handle; note them and move on
+                    if story.location_once_scrolled_into_view:
+                        txt = story.text
+                        href = story.find_element_by_tag_name("a").get_attribute("href")
+                        self.headlines.append((self.driver.title, href, txt))
+                except Exception as err:
+                    print(f"Failed to load headline:\n{err}")
 
         self.driver.close()
         self.driver.quit()
-        kill_firefox
+        kill_firefox()
 
     def __repr__(self):
         return "<APHeadlines object: url={}>".format(self.url)
 
 
 class Aggregator:
+
     """ Collect News Headlines and Stories  """
 
     def __init__(self):
@@ -373,23 +397,17 @@ class Aggregator:
         self._topics = []
         self._headlines = []
         self._stories = []
-        try:
-            if os.path.isfile("topics.json"):
-                self.restore_ap_topics()
-            else:
-                self.refresh_ap_topics()
-        except Exception as ex:
-            print(ex)
+        if os.path.isfile("topics.json"):
+            self.restore_ap_topics()
+        else:
+            self.refresh_ap_topics()
 
     def refresh_ap_topics(self):
         """ Collects the list of AP News topics and caches it """
 
-        try:
-            t = APHeadlines()
-            self._topics = t.topic_list
-            self.cache_ap_topics()
-        except Exception as ex:
-            print(ex)
+        headlines = APHeadlines()
+        self._topics = headlines.topic_list
+        self.cache_ap_topics()
 
     def cache_ap_topics(self):
         """ Dumps self._.topics too json file  """
@@ -400,23 +418,23 @@ class Aggregator:
     def restore_ap_topics(self):
         """ Reads previously cached topics back into self._topics """
 
-        try:
-            with open("topics.json", "r") as infile:
-                self._topics = json.load(infile)
-        except Exception as ex:
-            print("Can't read from 'topics.json': {}".format(ex))
+        with open("topics.json", "r") as infile:
+            self._topics = json.load(infile)
 
     def collect_ap_headlines(self):
         """ Collects AP Headlines by topic in self._hadlines.
-        
+
         Retruns self._headlines
         """
 
         self._headlines = []
         for topic in self._topics:
             try:
-                t = APHeadlines(topic[0])
-                self._headlines.extend(t.headlines)
+                # pylint: disable=broad-except
+                # These are triggered by ads and countermeasures
+                # no need to handle; note them and move on
+                top = APHeadlines(topic[0])
+                self._headlines.extend(top.headlines)
             except Exception as ex:
                 print(ex)
                 kill_firefox()
@@ -440,35 +458,41 @@ class Aggregator:
         try:
             with open("headlines.json", "r") as infile:
                 self._headlines = json.load(infile)
-        except Exception as ex:
-            print("Can't read from 'headlines.json': {}".format(ex))
+        except IOError as err:
+            print("Can't read from 'headlines.json': {}".format(err))
 
     def fetch_ap_article(self, url):
         """ Fetches a new APArticle and appends its content to stories
-        
+
         ARGS: url
-        
+
         """
 
         if re.search(r"apnews", url):
             try:
+                # pylint: disable=broad-except
+                # These are triggered by ads and countermeasures
+                # no need to handle; note them and move on
                 article = APArticle(url)
                 self._stories.append(article)
             except Exception as ex:
-                # kill_firefox()
+                kill_firefox()
                 time.sleep(3)
                 print("Unable to retrieve article", ex)
 
     @property
     def topics(self):
+        """List of topics """
         return self._topics
 
     @property
     def headlines(self):
+        """List of headlines """
         return self._headlines
 
     @property
     def stories(self):
+        """List of stories """
         return self._stories
 
     def __repr__(self):
@@ -478,9 +502,9 @@ class Aggregator:
 
 
 if __name__ == "__main__":
-    """ run unit tests  """
     import unittest
-    from tests import TestSeleniumScrapers
-    from tests import TestAggregator
+
+    # from tests import TestSeleniumScrapers
+    # from tests import TestAggregator
 
     unittest.main()

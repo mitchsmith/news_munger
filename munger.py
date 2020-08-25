@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """ This module provides a collection of utilities for creating a madlibs-
-style digest of news headlines and stories from a variety of feeds and 
+style digest of news headlines and stories from a variety of feeds and
 scraped web pages.
 """
 
@@ -11,23 +11,18 @@ import re
 import random
 import datetime
 import time
-import json
 import string
 import pickle
-import nltk
-import spacy
-import lemminflect
-from nltk.corpus import verbnet
-from spacy.lang.en import English
-from spacy.tokens import Doc, Span, Token
-from spacy.matcher import Matcher
 from collections import deque
 from itertools import islice
-from scrapers import Trends, Aggregator, APHeadlines, APArticle
+import spacy
+from nltk.corpus import names, verbnet
+from spacy.tokens import Doc
+from spacy.matcher import Matcher
+from scrapers import Aggregator
 from scrapers import WikiPerson, WikiOrg, WikiGPE
-from helpers import find_duplicates, kill_firefox, irreg_inflect
-from helpers import GENERIC_TITLES, FEMININE_TITLES, MASCULINE_TITLES, PRESIDENTIOSITUDE
-from gtts import list_voices, text_to_mp3
+from helpers import find_duplicates, irreg_inflect
+from helpers import GENERIC_TITLES, FEMININE_TITLES, MASCULINE_TITLES
 
 print("\nLoading spaCy English vocabulary with medium word vectors . . .")
 nlp = spacy.load("en_core_web_md")
@@ -63,14 +58,15 @@ class Munger:
         """
         NOT IMPLEMENTED
         This method is a stub.
-        
-        """
 
-        pass
+        """
 
     def fetch_subtrees(self, lemma):
 
         """Create a dict of left and right hand children for a given root. """
+
+        # pylint: disable=invalid-name
+        # Will change when refactoring
 
         subtrees = {"left": dict(), "right": dict()}
         alternatives = []
@@ -117,6 +113,9 @@ class Munger:
         or with a randomly chosen sentence with a similar root lemma.
         """
 
+        # pylint: disable=invalid-name
+        # Will change when refactoring
+
         if sentence_a:
             s1 = sentence_a
             if sentence_b:
@@ -160,79 +159,47 @@ class Munger:
         )
         return (None, None, munged.root.lemma_, munged)
 
-    def balance_quotes(self, sentence):
-
-        """Ballance double quotes using spaCy token attributes """
-
-        sent = sentence[-1]
-        hasq = [t for t in sent if t.orth_ in ["“", "”"]]
-        text = ""
-        center = sent.root.i - sent.start
-        lefts = [t.i - sent.start for t in hasq if t.i - sent.start < center]
-        rights = [t.i - sent.start for t in hasq if t.i - sent.start > center]
-        elements = [t.text_with_ws for t in sent]
-        if len(lefts) % 2:
-            if lefts[0] != 0:
-                text += "“"
-                fixcaps = re.sub(
-                    r"^\W+(\w+)", r"\1", "".join(elements[: center + 1])
-                ).split(" ")
-                fixcaps[0] = string.capwords((fixcaps[0]))
-                text += " ".join(fixcaps)
-            else:
-                ri = [
-                    t.i - sent.start
-                    for t in sent
-                    if t.i < sent.root.i and t.dep_ == "punct"
-                ][-1] + 1
-                text += "".join(elements[:ri])
-                text += "”"
-                text += "".join(elements[ri : center + 1])
-        else:
-            text += "".join(elements[: center + 1])
-
-        text += "".join([e for e in elements[center + 1 :] if e not in ["“", "”"]])
-
-        s = next(islice(nlp(text).sents, 0, None))
-
-        return (None, None, s.root.lemma_, s)
-
     def extract_quoted(self, sentence):
 
         """
         Extract quoted elements and return a list of sentence tuples
         """
 
+        # pylint: disable=invalid-name
+        # Will change when refactoring
+
         s = sentence[-1]
         hasq = deque([t for t in s if t.orth_ in ["“", "”"]])
         if len(hasq) % 2:
-            sent = self.balance_quotes(sentence)
+            sent = balance_quotes(sentence)
             return self.extract_quoted(sent)
-        else:
-            parts = []
-            while hasq:
-                lq = hasq.popleft()
-                rq = hasq.popleft()
-                start = lq.i - s.start + 1
-                end = rq.i - s.start
-                part = "".join([t.text_with_ws for t in s[start:end]])
-                parts.append(part)
+        parts = []
+        while hasq:
+            lq = hasq.popleft()
+            rq = hasq.popleft()
+            start = lq.i - s.start + 1
+            end = rq.i - s.start
+            part = "".join([t.text_with_ws for t in s[start:end]])
+            parts.append(part)
 
-            text = re.sub(r"\s+", " ", " ".join(parts))
-            sub_sents = [(None, None, ss.root.lemma_, ss) for ss in nlp(text).sents]
+        text = re.sub(r"\s+", " ", " ".join(parts))
+        sub_sents = [(None, None, ss.root.lemma_, ss) for ss in nlp(text).sents]
 
-            return sub_sents
+        return sub_sents
 
     def swap_quotes(self, sentence):
 
         """Insert randomly root-munged sentences in place of quotations """
+
+        # pylint: disable=invalid-name
+        # Will change when refactoring
 
         s = sentence
         hasq = deque([t for t in s[-1] if t.orth_ in ["“", "”"]])
         swaps = None
         if hasq:
             if len(hasq) % 2:
-                s = self.balance_quotes(s)
+                s = balance_quotes(s)
                 return self.swap_quotes(s)
             sub_sents = self.extract_quoted(s)
             swaps = []
@@ -257,6 +224,8 @@ class Munger:
                     del swaps[0]
                 else:
                     try:
+                        # pylint: disable=bare-except
+                        # Too many ways this can break to list them all
                         spl = [
                             t.i - swaps[0].start for t in swaps[0] if t.orth_ == ","
                         ][0]
@@ -268,10 +237,11 @@ class Munger:
                 text += repl
 
             text += "".join([t.text_with_ws for t in s[-1]][ri:])
-            new_sent = next(islice(nlp(text).sents, 0, None))
-            s = (None, None, new_sent.root.lemma_, new_sent)
 
-        return s
+            new_sent = next(islice(nlp(text).sents))[0]
+            sentence = (None, None, new_sent.root.lemma_, new_sent)
+
+        return sentence
 
     def munge_sayings(self, sentence_a, sentence_b=None):
 
@@ -279,23 +249,24 @@ class Munger:
         Munge 'say' sentence by swapping quotiations or by munging children
         """
 
+        # pylint: disable=invalid-name
+        # Will change when refactoring
+
         sentences = [sentence_a, sentence_b]
-        swaps = None
-        for i, s in enumerate(sentences):
+        for s in sentences:
             if s:
                 hasq = deque([t for t in s[-1] if t.orth_ in ["“", "”"]])
                 if hasq:
                     if len(hasq) % 2:
-                        s = self.balance_quotes(s)
+                        s = balance_quotes(s)
                         return self.munge_sayings(s)
                     return self.swap_quotes(s)
 
-                else:
-                    return self.munge_children(s)
+                return self.munge_children(s)
 
-        return sentencs[0]
+        return sentences[0]
 
-    def munge_beings(self, sentence, sentence_b=None):
+    def munge_beings(self, sentence):
 
         """
         TODO: Need to further investgate how to disambiguate and handle
@@ -303,11 +274,14 @@ class Munger:
         I'll also gain insights on how to deal with modals.
         """
 
-        return [sentence_a, sentence_b]
+        return sentence
 
     def munge_children(self, sentence, *args, **kwargs):
 
         """Sequentially replace subtree of each child of root """
+
+        # pylint: disable=invalid-name
+        # Will change when refactoring
 
         s = sentence[-1]
         lemma = s.root.lemma_
@@ -394,10 +368,10 @@ class Munger:
                             t = 1
                         repl = irreg_inflect(s.root.lemma_, [t, n, p])
 
-                    re.sub(r"".format(s.root.orth_), repl, elements[-1])
+                    re.sub(r"{}".format(s.root.orth_), repl, elements[-1])
                 else:
                     re.sub(
-                        r"".format(s.root.orth_),
+                        r"{}".format(s.root.orth_),
                         s.root._.inflect(infl_tag),
                         elements[-1],
                     )
@@ -432,55 +406,66 @@ class Munger:
                 s_list = list(set(self._sentences[lemma]) - set(exclude))
                 if s_list:
                     random.shuffle(s_list)
-                    d, s = s_list[0]
-                    sent = next(islice(self._documents[d].sents, s, None))
-                    return (d, s, lemma, sent)
-                else:
-                    # check verbnet
-                    vnids = verbnet.classids(lemma)
-                    alternatives = []
-                    for vnid in vnids:
-                        for lem in verbnet.lemmas(vnid):
-                            if lem in self._popular_roots:
-                                alternatives.extend(self._sentences[lem])
-                    if alternatives:
-                        # use these to continue
-                        d, s = alternatives[random.randrange(len(alternatives))]
-                        sent = next(islice(self._documents[d].sents, s, None))
-                        lemma = sent.root.lemma_
-                        return (d, s, lemma, sent)
-                    return ()
-        d = doc_list[random.randrange(len(doc_list))]
-        print("d: {}".format(d))
+                    d_index, s_index = s_list[0]
+                    sent = next(islice(self._documents[d_index].sents, s_index, None))
+                    return (d_index, s_index, lemma, sent)
+                # check verbnet
+                vnids = verbnet.classids(lemma)
+                alternatives = []
+                for vnid in vnids:
+                    for lem in verbnet.lemmas(vnid):
+                        if lem in self._popular_roots:
+                            alternatives.extend(self._sentences[lem])
+                if alternatives:
+                    # use these to continue
+                    d_index, s_index = alternatives[random.randrange(len(alternatives))]
+                    sent = next(islice(self._documents[d_index].sents, s_index, None))
+                    lemma = sent.root.lemma_
+
+                    return (d_index, s_index, lemma, sent)
+
+                return ()
+
+        d_index = doc_list[random.randrange(len(doc_list))]
+        print("d: {}".format(d_index))
         s_list = list(
-            set([(d, s) for s in range(len([x for x in self._documents[d].sents]))])
+            set(
+                [
+                    (d_index, s)
+                    for s in range(len([x for x in self._documents[d_index].sents]))
+                ]
+            )
             - set(exclude)
         )
         random.shuffle(s_list)
-        s = s_list[0][1]
-        sent = next(islice(self._documents[d].sents, s, None))
+        s_index = s_list[0][1]
+        sent = next(islice(self._documents[d_index].sents, s_index, None))
         lemma = sent.root.lemma_
-        return (d, s, lemma, sent)
+
+        return (d_index, s_index, lemma, sent)
 
     def find_mungeable_sentences(self):
 
         """ Fetch all sentence roots and their doc and sent indexes """
 
         s_roots = []
-        for d in self._documents:
-            s_roots.extend([s.root for s in d.sents])
+        for doc in self._documents:
+            s_roots.extend([s.root for s in doc.sents])
         # list all lemmas occurring more than once as sentence roots
         root_lemmas = find_duplicates([r.lemma_ for r in s_roots])
         # locate sentences with identical root lemmas by document and sentence index
         sentences = {k: [] for k in root_lemmas}
-        for i, d in enumerate(self._documents):
-            for j, s in enumerate(d.sents):
-                if s.root.lemma_ in root_lemmas:
-                    sentences[s.root.lemma_].append((i, j))
+        for i, doc in enumerate(self._documents):
+            for j, sent in enumerate(doc.sents):
+                if sent.root.lemma_ in root_lemmas:
+                    sentences[sent.root.lemma_].append((i, j))
         return sentences
 
     @property
     def headline(self):
+
+        """ Headline """
+
         if self._headline:
             return self._headline
         return "Headless Corpse Found in Library"
@@ -493,9 +478,10 @@ class Person:
 
     """A person as identified in spacy doc ents """
 
-    def __init__(self, name=None, *args, **kwargs):
+    def __init__(self, name=None):
         self.name = name
         self.appears_in = []
+        self.bio = None
         self._aka = [name]
         self._dates = []
         self._born = None
@@ -509,9 +495,7 @@ class Person:
 
         aka = self._aka.extend(alias_list)
 
-        self._aka = sorted(
-            set(self._aka), key=lambda n: len(n.split(" ")), reverse=True
-        )
+        self._aka = sorted(set(aka), key=lambda n: len(n.split(" ")), reverse=True)
 
     def lookup(self):
 
@@ -520,7 +504,7 @@ class Person:
         wikiperson = WikiPerson(self.name)
         if wikiperson.found:
             try:
-                self._bio = nlp(wikiperson.bio.text)
+                self.bio = nlp(wikiperson.bio.text)
                 paren_pat = [
                     {"ORTH": "("},
                     {"ORTH": {"!": ")"}, "OP": "+"},
@@ -529,32 +513,37 @@ class Person:
                 paren_matcher = Matcher(nlp.vocab)
                 paren_matcher.add("Parenthetical", None, paren_pat)
                 try:
-                    mid, lp, rp = paren_matcher(self._bio)[0]
+                    mid, lpn, rpn = paren_matcher(self.bio)[0]
                     dates = [
                         d
-                        for d in self._bio.ents
-                        if d.label_ == "DATE" and d[0].i > lp and d[-1].i < rp
+                        for d in self.bio.ents
+                        if d.label_ == "DATE" and d[0].i > lpn and d[-1].i < rpn
                     ]
                     self._born = dates[0].orth_
                     if len(dates) > 1:
                         self._died = dates[-1]
                     for date in dates:
-                        m = [t.orth_ for t in date if t.is_alpha]
-                        d = [t.orth_ for t in date if t.is_digit and len(t.orth_) <= 2]
-                        y = [t.orth_ for t in date if t.is_digit and len(t.orth_) == 4]
-                        ds = []
-                        df = []
-                        if d:
-                            ds.append(d[0])
-                            df.append("%d")
-                        if m:
-                            ds.append(m[0])
-                            df.append("%B")
-                        ds.append(y[0])
-                        df.append("%Y")
+                        month = [t.orth_ for t in date if t.is_alpha]
+                        day = [
+                            t.orth_ for t in date if t.is_digit and len(t.orth_) <= 2
+                        ]
+                        year = [
+                            t.orth_ for t in date if t.is_digit and len(t.orth_) == 4
+                        ]
+                        dstr = []
+                        dfrm = []
+                        if day:
+                            dstr.append(day[0])
+                            dfrm.append("%d")
+                        if month:
+                            dstr.append(month[0])
+                            dfrm.append("%B")
+                        dstr.append(year[0])
+                        dfrm.append("%Y")
                         self._dates.append(
-                            datetime.datetime.strptime(" ".join(ds), " ".join(df))
+                            datetime.datetime.strptime(" ".join(dstr), " ".join(dfrm))
                         )
+                    del mid
                 except IndexError:
                     pass
                 self.aka_include(
@@ -573,7 +562,7 @@ class Person:
 
         return self._wikidata
 
-    def merge_info(info):
+    def merge_info(self, info):
 
         """Normalize and include additional info (Not yet implemented) """
 
@@ -581,33 +570,55 @@ class Person:
 
     @property
     def aka(self):
+
+        """ Alternate names (ordered by length) """
+
         return self._aka
 
     @property
     def dates(self):
+
+        """ Dates text """
+
         return self._dates
 
     @property
     def born(self):
+
+        """ Birth date """
         return self._born
 
     @property
     def died(self):
+
+        """ Death date """
+
         return self._died
 
     @property
     def age(self):
+
+        """ Calculated age """
+
         if self._dates and self.died:
             return int((self._dates[-1] - self._dates[0]).days // 365.25)
-        elif self._dates:
+        if self._dates:
             return int((datetime.datetime.now() - self._dates[0]).days // 365.25)
+
+        return None
 
     @property
     def info(self):
+
+        """ spacy and nltk interpolated data """
+
         return self._info
 
     @property
     def wikidata(self):
+
+        """ WikiPerson instance """
+
         return self._wikidata
 
     def __repr__(self):
@@ -618,7 +629,7 @@ class Organization:
 
     """An organization as identified in spacy doc ents """
 
-    def __init__(self, name=None, *args, **kwargs):
+    def __init__(self, name=None):
         self.determiner = False
         if re.search(r"^[Tt]he", name):
             self.determiner = True
@@ -629,6 +640,7 @@ class Organization:
         self._aka = []
         self._info = None
         self._wikidata = None
+        self._description = None
 
     def lookup(self):
 
@@ -649,16 +661,17 @@ class Organization:
                 paren_matcher = Matcher(nlp.vocab)
                 paren_matcher.add("Parenthetical", None, paren_pat)
                 try:
-                    mid, lp, rp = paren_matcher(self._description)[0]
-                    if lp and not self.abbr:
-                        if re.search(r"^[A-Z\.]+]$", self._description[lp:rp].orth_):
-                            self.abbr = self._description[lp:rp].orth_
+                    mid, lpn, rpn = paren_matcher(self._description)[0]
+                    if lpn and not self.abbr:
+                        if re.search(r"^[A-Z\.]+]$", self._description[lpn:rpn].orth_):
+                            self.abbr = self._description[lpn:rpn].orth_
                     elif (
-                        lp
-                        and rp
-                        and not re.search(r"^/", self._description[lp:rp].orth_)
+                        lpn
+                        and rpn
+                        and not re.search(r"^/", self._description[lpn:rpn].orth_)
                     ):
-                        self.aka_include([self._description[lp + 1 : rp - 1].orth_])
+                        self.aka_include([self._description[lpn + 1 : rpn - 1].orth_])
+                        del mid
                 except IndexError:
                     pass
 
@@ -675,29 +688,42 @@ class Organization:
         return self._wikidata
 
     def aka_include(self, alias_list):
-        aka = self._aka.extend(alias_list)
-        self._aka = sorted(
-            set(self._aka), key=lambda n: len(n.split(" ")), reverse=True
-        )
 
-    def merge_info(info):
+        """ Extend aka list """
+
+        aka = self._aka.extend(alias_list)
+        self._aka = sorted(set(aka), key=lambda n: len(n.split(" ")), reverse=True)
+
+    def merge_info(self, info):
+
+        """ Incorporate new interpolated info (not implemented) """
+
         self._info = info
 
     @property
     def aka(self):
+
+        """ Alternate designations """
+
         return self._aka
 
     @property
     def info(self):
+
+        """ spacy and nltk interpolations """
+
         return self._info
 
     @property
     def wikidata(self):
+
+        """ WikiOrg instance """
+
         return self._wikidata
 
     @wikidata.setter
     def wikidata(self, value):
-        if type(value) == WikiOrg:
+        if isinstance(value) == WikiOrg:
             self._wikidata = value
 
     def __repr__(self):
@@ -708,7 +734,7 @@ class GeoPoliticalEntity:
 
     """An geopolitical entity as identified in spacy doc ents """
 
-    def __init__(self, name=None, *args, **kwargs):
+    def __init__(self, name=None):
         self.determiner = False
         if re.search(r"^[Tt]he", name):
             self.determiner = True
@@ -720,6 +746,7 @@ class GeoPoliticalEntity:
         self._aka = []
         self._info = None
         self._wikidata = None
+        self._description = None
 
     def lookup(self):
 
@@ -742,6 +769,7 @@ class GeoPoliticalEntity:
             try:
                 mid, start, end = isa_matcher(self._description)[0]
                 self.isa = self._description[start + 2 : end].lower_
+                del mid
             except IndexError:
                 pass
             for text in self._wikidata.bold:
@@ -753,7 +781,7 @@ class GeoPoliticalEntity:
             if self._wikidata.abbr:
                 self.abbrs.append(self._wikidata.abbr)
 
-            self.abbrs = sorted(set(self.abbrs), key=lambda a: len(a), reverse=True)
+            self.abbrs = sorted(set(self.abbrs), key=len, reverse=True)
 
             if self.abbrs:
                 self.aka_include([self.abbrs])
@@ -765,10 +793,23 @@ class GeoPoliticalEntity:
         return self._wikidata
 
     def aka_include(self, alias_list):
+
+        """List of unique aliases (longest form first) """
+
         aka = self._aka.extend(alias_list)
-        self._aka = sorted(
-            set(self._aka), key=lambda n: len(n.split(" ")), reverse=True
-        )
+        self._aka = sorted(set(aka), key=lambda n: len(n.split(" ")), reverse=True)
+
+    @property
+    def wikidata(self):
+
+        """ WikiGPE instance """
+
+        return self._wikidata
+
+    @wikidata.setter
+    def wikidata(self, value):
+        if isinstance(value) == WikiGPE:
+            self._wikidata = value
 
     def __repr__(self):
         return "<GeoPoliticalEntity: {}>".format(self.name)
@@ -781,11 +822,12 @@ class Scanner:
     def __init__(self):
         self._document = None
         self._entity_type = None
+        self._entities = {}
 
     def scan(self, document):
 
         """ Locate entities of a given entity type
-        
+
         ARGS:
             document (required) str or spacy.Doc instance
 
@@ -793,37 +835,34 @@ class Scanner:
             the longest form of each name as key.
         """
 
-        if type(document) != Doc:
-            if type(document) == str:
+        if isinstance(document) != Doc:
+            if isinstance(document) == str:
                 self._document = nlp(document)
             else:
                 raise TypeError("Scanner.scan requires str or Doc")
         else:
             self._document = document
 
-        self._entities = {}
-
-        for n in reversed(
-            sorted(
-                [
-                    ent.text.split(" ")
-                    for ent in self._document.ents
-                    if ent.label_ == self._entity_type
-                ],
-                key=lambda lst: len(lst),
-            )
+        for alt_name in sorted(
+            [
+                ent.text.split(" ")
+                for ent in self._document.ents
+                if ent.label_ == self._entity_type
+            ],
+            key=len,
+            reverse=True,
         ):
-            if " ".join(n) not in self._entities.keys():
+            if " ".join(alt_name) not in self._entities.keys():
                 found = False
-                print("{} not in self._entities.keys.".format(" ".join(n)))
-                for k in self._entities.keys():
-                    if re.search(" ".join(n), k):
+                print("{} not in self._entities.keys.".format(" ".join(alt_name)))
+                for key, entity in self._entities.items():
+                    if re.search(" ".join(alt_name), key):
                         print("re match in name keys")
-                        self._entities[k].append(" ".join(n))
+                        entity.append(" ".join(alt_name))
                         found = True
                         break
             if not found:
-                self._entities[" ".join(n)] = [" ".join(n)]
+                entity = [" ".join(alt_name)]
 
         if self._entity_type == "PERSON":
             self._document._.people = self._entities
@@ -832,6 +871,9 @@ class Scanner:
 
     @property
     def document(self):
+
+        """The scanned document """
+
         return self._document
 
     def __repr__(self):
@@ -853,82 +895,24 @@ class PersonScanner(Scanner):
 
         super().scan(document)
 
+        # pylint: disable=consider-iterating-dictionary
+        # We only need the key in this case
         for entity in self._entities.keys():
             person = Person(entity)
             try:
                 person.lookup()
-            except:
+            except TypeError:
                 pass
             self._people.append(person)
 
-    def get_person_info(self, person):
-
-        """Try to determine gender, etc. from the most complete PERSON reference.
-        
-        ARGS:
-            person (required) string: all or part of the person's full name
-
-        RETURNS:
-            dict containing discoverable PERSON attributes
-
-        TODO: Rewrite this in a spacy way
-        """
-
-        gender = None
-        honorific = None
-        role = None
-        first = None
-        middle = None
-        last = None
-        suffix = None
-        tokens = deque([p for p in person.split(" ") if re.search(r"\w+", p)])
-        if tokens[0] in MASCULINE_TITLES:
-            honorific = tokens.popleft()
-            gender = "Male"
-        elif tokens[0] in FEMININE_TITLES:
-            honorific = tokens.popleft()
-            gender = "Female"
-        if tokens[0] in GENERIC_TITLES:
-            role = tokens.popleft()
-        elif re.match(r"\w\w+\.", tokens[0]):
-            role = tokens.popleft()
-        # At this point, element 0 should be either the first name or initial.
-        if tokens[0] in names.words("female.txt"):
-            if not gender:
-                gender = "Female"
-        if tokens[0] in names.words("male.txt"):
-            if not gender:
-                gender = "Male"
-            elif not honorific:
-                gender = "Unknown"
-        first = tokens.popleft()
-        try:
-            # Check for suffix: 'Esq.', 'Jr.'. 'Sr. etc.
-            if re.match(r".+\.|Junior|Senior|[IVX]+$", tokens[-1]):
-                suffix = tokens.pop()
-        except IndexError:
-            pass
-        else:
-            if tokens:
-                last = tokens.pop()
-            if tokens:
-                middle = " ".join(tokens)
-        if honorific and not last:
-            last = first
-            first = None
-
-        return {
-            "gender": gender,
-            "honorific": honorific,
-            "role": role,
-            "first": first,
-            "middle": middle,
-            "last": last,
-            "suffix": suffix,
-        }
+    @property
+    def entities(self):
+        """ Return the entities dict as people """
+        return self._entities
 
     @property
     def people(self):
+        """ Return the list of people """
         return self._people
 
     def __repr__(self):
@@ -946,20 +930,28 @@ class OrgScanner(Scanner):
 
     def scan(self, document):
 
-        """Locate ORG entities and instantiate Person objects """
+        """Locate ORG entities and instantiate Org objects """
 
         super().scan(document)
 
+        # pylint: disable=consider-iterating-dictionary
+        # We only need the key to instaniate the Org object
         for entity in self._entities.keys():
             org = Organization(entity)
             try:
                 org.lookup()
-            except:
+            except TypeError:
                 pass
             self._orgs.append(org)
 
     @property
+    def entities(self):
+        """ Return the dict of org entities """
+        return self._entities
+
+    @property
     def orgs(self):
+        """ Return the list of orgs """
         return self._orgs
 
     def __repr__(self):
@@ -981,16 +973,24 @@ class GPEScanner(Scanner):
 
         super().scan(document)
 
+        # pylint: disable=consider-iterating-dictionary
+        # We only need the key in this case
         for entity in self._entities.keys():
             gpe = GeoPoliticalEntity(entity)
             try:
                 gpe.lookup()
-            except:
+            except TypeError:
                 pass
             self._gpes.append(gpe)
 
     @property
+    def entities(self):
+        """ Return the dict of gpe entities """
+        return self._entities
+
+    @property
     def gpes(self):
+        """ Return the list of gpes """
         return self._gpes
 
     def __repr__(self):
@@ -1001,9 +1001,9 @@ class DocumentCatalog:
 
     """Collections of named Entities extracted from across muntiple docs """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
 
-        """ """
+        """Collect documents and related named entity info """
 
         try:
             Doc.set_extension("title", default=None)
@@ -1021,14 +1021,14 @@ class DocumentCatalog:
         self.people = []
         self.orgs = []
         self.gpes = []
-        self.subj_np_forms = {}
-        self.np_complement_forms = {}
 
         dateline_pattern = re.compile(r"^([A-Z][A-Z ,][^—]*?— )", flags=re.MULTILINE)
 
         for i, story in enumerate(self.aggregator.stories):
             text = story.content["text"]
             dateline = None
+            # pylint disable=bare-except
+            # Need to ignore ALL errors, even if not BaseException
             try:
                 dateline = dateline_pattern.search(text)[0]
             except:
@@ -1042,28 +1042,27 @@ class DocumentCatalog:
             self.documents[i]._.byline = story.byline
             self.documents[i]._.dateline = dateline
             self.documents[i]._.timestamp = story.timestamp
+            self.documents[i]._.people = story.people
 
     def collect_people(self):
 
         """Collect list of Person objects """
 
         scanner = PersonScanner()
-        for i, d in enumerate(self.documents):
-            scanner.scan(d)
-            doc_people = scanner._entities
-            for full_name in doc_people.keys():
-                print(full_name)
+        for i, doc in enumerate(self.documents):
+            scanner.scan(doc)
+            doc_people = scanner.entities
+            for key, alt_names in doc_people.items():
                 addme = True
                 try:
-                    idx = [p.name for p in self.people].index(full_name)
+                    idx = [p.name for p in self.people].index(key)
                     if idx:
                         person = self.people[idx]
                         addme = False
                 except ValueError:
-                    person = Person(full_name)
+                    person = Person(key)
                     person.lookup()
-                person.aka_include(sorted(set(doc_people[full_name])))
-                # person.merge_info(scanner.get_person_info(full_name))
+                person.aka_include(sorted(set(alt_names)))
                 person.appears_in.append(i)
                 if addme:
                     self.people.append(person)
@@ -1073,20 +1072,20 @@ class DocumentCatalog:
         """Collect list of Organization objects """
 
         scanner = OrgScanner()
-        for i, d in enumerate(self.documents):
-            scanner.scan(d)
-            doc_orgs = scanner._entities
-            for org_name in doc_orgs.keys():
+        for i, doc in enumerate(self.documents):
+            scanner.scan(doc)
+            doc_orgs = scanner.entities
+            for key, alt_ames in doc_orgs.items():
                 addme = True
                 try:
-                    idx = [o.name for o in self.orgs].index(org_name)
+                    idx = [o.name for o in self.orgs].index(key)
                     if idx:
                         org = self.orgs[idx]
                         addme = False
                 except ValueError:
-                    org = Organization(org_name)
-                    org.wikidata = WikiOrg(org_name)
-                org.aka_include(sorted(set(doc_orgs[org_name])))
+                    org = Organization(key)
+                    org.wikidata = WikiOrg(key)
+                org.aka_include(sorted(set(alt_ames)))
                 org.appears_in.append(i)
                 if addme and org.wikidata.found:
                     self.orgs.append(org)
@@ -1096,95 +1095,23 @@ class DocumentCatalog:
         """Collect list of Organization objects """
 
         scanner = GPEScanner()
-        for i, d in enumerate(self.documents):
-            scanner.scan(d)
-            doc_gpes = scanner._entities
-            for gpe_name in doc_gpes.keys():
+        for i, doc in enumerate(self.documents):
+            scanner.scan(doc)
+            doc_gpes = scanner.entities
+            for key, alt_names in doc_gpes.items():
                 addme = True
                 try:
-                    idx = [o.name for o in self.gpes].index(gpe_name)
+                    idx = [o.name for o in self.gpes].index(key)
                     if idx:
                         gpe = self.gpes[idx]
                         addme = False
                 except ValueError:
-                    gpe = GeoPoliticalEntity(gpe_name)
-                    gpe.wikidata = WikiGPE(gpe_name)
-                gpe.aka_include(sorted(set(doc_gpes[gpe_name])))
+                    gpe = GeoPoliticalEntity(key)
+                    gpe.wikidata = WikiGPE(key)
+                gpe.aka_include(sorted(set(alt_names)))
                 gpe.appears_in.append(i)
                 if addme and gpe.wikidata.found:
                     self.gpes.append(gpe)
-
-    def collect_subj_np_forms(self):
-
-        """ """
-
-        for i, d in enumerate(self.documents):
-            for j, sent in enumerate(d.sents):
-                idx = [t.orth_ for t in sent].index(sent.root.orth_)
-                try:
-                    self.subj_np_forms["-".join([t.dep_ for t in sent[:idx]])].append(
-                        (sent.root, i, j, idx)
-                    )
-                except KeyError:
-                    self.subj_np_forms["-".join([t.dep_ for t in sent[:idx]])] = [
-                        (sent.root, i, j, idx)
-                    ]
-
-    def collect_np_complement_forms(self):
-
-        """ """
-
-        for i, d in enumerate(self.documents):
-            for j, sent in enumerate(d.sents):
-                idx = [t.orth_ for t in sent].index(sent.root.orth_) + 1
-                try:
-                    self.np_complement_forms[
-                        "-".join([t.dep_ for t in sent[idx:]])
-                    ].append((sent.root, i, j, idx))
-                except KeyError:
-                    self.np_complement_forms["-".join([t.dep_ for t in sent[idx:]])] = [
-                        (sent.root, i, j, idx)
-                    ]
-
-    def similar_subj_nps(self, common_form):
-
-        """ """
-
-        subjects = {}
-        if common_form in self.common_subj_forms:
-            for tup in [
-                t for t in self.subj_np_forms[common_form] if t[0].pos_ == "VERB"
-            ]:
-                doc = self.documents[tup[1]]
-                # subjects[tup] = [snt for snt in doc.sents][tup[2]][:tup[3]]
-                subjects[tup] = next(islice(doc.sents, tup[2]))[: tup[3]]
-        return subjects
-
-    def similar_np_complements(self, common_form):
-
-        """ """
-
-        complements = {}
-        if common_form in self.common_complement_forms:
-            for tup in [
-                t for t in self.np_complement_forms[common_form] if t[0].pos_ == "VERB"
-            ]:
-                doc = self.documents[tup[1]]
-                complements[tup] = next(islice(doc.sents, tup[2]))[: tup[3]]
-
-        return complements
-
-    @property
-    def common_subj_forms(self):
-        return [k for k in self.subj_np_forms.keys() if len(self.subj_np_forms[k]) > 1]
-
-    @property
-    def common_complement_forms(self):
-        return [
-            k
-            for k in self.np_complement_forms.keys()
-            if len(self.np_complement_forms[k]) > 1
-        ]
 
     def __repr__(self):
         return "<DocumentCatalog: {}>".format(self.created_at)
@@ -1193,82 +1120,208 @@ class DocumentCatalog:
 # Functions
 
 
+def balance_quotes(sentence):
+
+    """Ballance double quotes using spaCy token attributes """
+
+    # pylint: disable=invalid-name
+    # Will change when refactoring
+
+    sent = sentence[-1]
+    hasq = [t for t in sent if t.orth_ in ["“", "”"]]
+    text = ""
+    center = sent.root.i - sent.start
+    lefts = [t.i - sent.start for t in hasq if t.i - sent.start < center]
+    elements = [t.text_with_ws for t in sent]
+    if len(lefts) % 2:
+        if lefts[0] != 0:
+            text += "“"
+            fixcaps = re.sub(
+                r"^\W+(\w+)", r"\1", "".join(elements[: center + 1])
+            ).split(" ")
+            fixcaps[0] = string.capwords((fixcaps[0]))
+            text += " ".join(fixcaps)
+        else:
+            ri = [
+                t.i - sent.start
+                for t in sent
+                if t.i < sent.root.i and t.dep_ == "punct"
+            ][-1] + 1
+            text += "".join(elements[:ri])
+            text += "”"
+            text += "".join(elements[ri : center + 1])
+    else:
+        text += "".join(elements[: center + 1])
+
+    text += "".join([e for e in elements[center + 1 :] if e not in ["“", "”"]])
+
+    s = next(islice(nlp(text).sents, 0, None))
+
+    return (None, None, s.root.lemma_, s)
+
+
+def get_person_info(person):
+
+    """Try to determine gender, etc. from the most complete PERSON reference.
+
+    ARGS:
+        person (required) string: all or part of the person's full name
+
+    RETURNS:
+        dict containing discoverable PERSON attributes
+
+    TODO: Rewrite this in a spacy way
+    """
+
+    gender = None
+    honorific = None
+    role = None
+    first = None
+    middle = None
+    last = None
+    suffix = None
+    tokens = deque([p for p in person.split(" ") if re.search(r"\w+", p)])
+    if tokens[-1] in MASCULINE_TITLES:
+        honorific = tokens.popleft()
+        gender = "Male"
+    elif tokens[-1] in FEMININE_TITLES:
+        honorific = tokens.popleft()
+        gender = "Female"
+    if tokens[-1] in GENERIC_TITLES:
+        role = tokens.popleft()
+    elif re.match(r"\w\w+\.", tokens[-1]):
+        role = tokens.popleft()
+    # At this point, element -1 should be either the first name or initial.
+    if tokens[-1] in names.words("female.txt"):
+        if not gender:
+            gender = "Female"
+    if tokens[-1] in names.words("male.txt"):
+        if not gender:
+            gender = "Male"
+        elif not honorific:
+            gender = "Unknown"
+    first = tokens.popleft()
+    try:
+        # Check for suffix: 'Esq.', 'Jr.'. 'Sr. etc.
+        if re.match(r".+\.|Junior|Senior|[IVX]+$", tokens[-2]):
+            suffix = tokens.pop()
+    except IndexError:
+        pass
+    else:
+        if tokens:
+            last = tokens.pop()
+        if tokens:
+            middle = " ".join(tokens)
+    if honorific and not last:
+        last = first
+        first = None
+
+    return {
+        "gender": gender,
+        "honorific": honorific,
+        "role": role,
+        "first": first,
+        "middle": middle,
+        "last": last,
+        "suffix": suffix,
+    }
+
+
 def sent_from_wordlist(elements):
+
+    """ Convert a list of word_texts to a spacy sentence """
+
     text = " ".join(elements)
     text = re.sub(r"[\n\s]+", " ", text)
     text = re.sub(r"\s+([,\.\!\?])", r"\1", text)
     sent = next(islice(nlp(text).sents, 0, None))
+
     return (None, None, sent.root.lemma_, sent)
 
 
 def strip_bottoms(documents):
 
-    """  """
+    """Remove article byline and ads from the article body """
+
     stripped = []
 
-    for d in documents:
+    for doc in documents:
 
         try:
-            end = [s.root.i for s in d.sents if s.root.orth_ == "_"][0] - 2
+            end = [s.root.i for s in doc.sents if s.root.orth_ == "_"][0] - 2
         except IndexError:
             end = -1
-        stripped.append(d[:end].as_doc())
+        stripped.append(doc[:end].as_doc())
+        stripped[-1]._.title = doc._.title
+        stripped[-1]._.byline = doc._.byline
+        stripped[-1]._.timestamp = doc._.timestamp
+        stripped[-1]._.dateline = doc._.dateline
+        stripped[-1]._.people = doc._.people
 
     return stripped
 
 
 def traverse(node):
+
+    """ Return a depth-first parse tree for a given node """
+
     if node.n_lefts + node.n_rights > 0:
         return [(node.i, node), [traverse(child) for child in node.children]]
+
+    return (node.i, node)
+
+
+def load_or_refresh_ag(topic_list=None):
+
+    """Scrape today's news or reload id from the pickle. """
+
+    if topic_list:
+        topics = topic_list
     else:
-        return (node.i, node)
-
-
-def load_or_refresh_ag(
-    topic_list=[
-        "Sports",
-        "Politics",
-        "Entertainment",
-        "Lifestyle",
-        "Oddities",
-        "Travel",
-        "Technology",
-        "Business",
-        "U.S. News",
-        "International News",
-        "Politics",
-        "Religion",
-    ]
-):
+        topics = [
+            "Sports",
+            "Politics",
+            "Entertainment",
+            "Lifestyle",
+            "Oddities",
+            "Travel",
+            "Technology",
+            "Business",
+            "U.S. News",
+            "International News",
+            "Politics",
+            "Religion",
+        ]
 
     cached = datetime.datetime.today().strftime("tmp/ag_%Y%m%d.pkl")
     # cached = "./tmp/ag_20200808.pkl"
     if os.path.isfile(cached):
         with open(cached, "rb") as pkl:
-            ag = pickle.load(pkl)
+            agg = pickle.load(pkl)
     else:
-        ag = Aggregator()
-        ag.collect_ap_headlines()
-        # ag.restore_headlines()
+        agg = Aggregator()
+        agg.collect_ap_headlines()
+        # agg.restore_headlines()
 
-        for top in topic_list:
+        for topic in topics:
             failed = 0
-            stopat = len(ag.stories) + 2
-            for url in [h[1] for h in ag.headlines if h[0] == top]:
+            stopat = len(agg.stories) + 2
+            for url in [h[1] for h in agg.headlines if h[0] == topic]:
                 try:
-                    ag.fetch_ap_article(url)
-                except:
-                    kill_firefox()
+                    # pylint: disable=broad-except
+                    # Article fetching is error prone; skip it and try another
+                    agg.fetch_ap_article(url)
+                except Exception as err:
+                    print(f"Skipping article:\n{err}")
                     time.sleep(3)
                     failed += 1
                     if failed < 4:
                         continue
-                    else:
-                        break
-                if len(ag.stories) >= stopat:
+                    break
+                if len(agg.stories) >= stopat:
                     break
 
         with open(cached, "wb") as pkl:
-            pickle.dump(ag, pkl)
+            pickle.dump(agg, pkl)
 
-    return ag
+    return agg

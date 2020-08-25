@@ -58,6 +58,7 @@ but be sure to edit the Pipfile first.
     
         cd news_munger
         pipenv install
+	pipenv shell
 
 
 5. **From the terminal, download spacy's English model with word vectors:

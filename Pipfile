@@ -4,9 +4,11 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-nltk = "*"
-bs4 = "*"
+pylint = "*"
+bpython = "*"
+"bs4" = "*"
 selenium = "*"
+nltk = "*"
 spacy = "*"
 spacy-lookups-data = "*"
 lemminflect = "*"
