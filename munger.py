@@ -1042,7 +1042,7 @@ class DocumentCatalog:
             self.documents[i]._.byline = story.byline
             self.documents[i]._.dateline = dateline
             self.documents[i]._.timestamp = story.timestamp
-            self.documents[i]._.people = story.people
+
 
     def collect_people(self):
 
