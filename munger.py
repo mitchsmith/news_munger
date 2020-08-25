@@ -16,6 +16,7 @@ import pickle
 from collections import deque
 from itertools import islice
 import spacy
+import lemminflect
 from nltk.corpus import names, verbnet
 from spacy.tokens import Doc
 from spacy.matcher import Matcher
@@ -238,7 +239,7 @@ class Munger:
 
             text += "".join([t.text_with_ws for t in s[-1]][ri:])
 
-            new_sent = next(islice(nlp(text).sents))[0]
+            new_sent = next(islice(nlp(text).sents, 0, None))
             sentence = (None, None, new_sent.root.lemma_, new_sent)
 
         return sentence
@@ -1042,7 +1043,7 @@ class DocumentCatalog:
             self.documents[i]._.byline = story.byline
             self.documents[i]._.dateline = dateline
             self.documents[i]._.timestamp = story.timestamp
-            self.documents[i]._.people = story.people
+
 
     def collect_people(self):
 
